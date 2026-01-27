@@ -9,9 +9,9 @@ exports.registerAdminCtrl = async (req, res) => {
 
   try {
     const adminExists = await Admin.findOne({ email });
-    if (adminExists) {
-      res.json("Admin exists");
-    }
+    // if (adminExists) {
+    //   res.json("Admin exists");
+    // }
 
     //register
     const user = await Admin.create({
