@@ -1,13 +1,26 @@
 {
   "name": "school-system",
   "version": "1.0.0",
-  "description": "",
+  "description": "system for school exams",
   "license": "ISC",
-  "author": "",
+  "author": "Tornike Burjanadze",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "server": "nodemon server.js"
+  },
+  "keywords": [
+    "school-system",
+    "nodejs"
+  ],
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongoose": "^9.1.5"
+  },
+  "devDependencies": {
+    "morgan": "^1.10.1",
+    "nodemon": "^3.1.11"
   }
 }
