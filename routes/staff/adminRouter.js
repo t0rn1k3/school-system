@@ -15,7 +15,7 @@ const {
   adminUnwithdrawTeacherCtrl,
   adminPublishExamCtrl,
   adminUnpublishExamCtrl,
-} = require("../../controller/adminCtrl");
+} = require("../../controller/staff/adminCtrl");
 
 //register
 
