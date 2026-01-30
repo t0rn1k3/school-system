@@ -16,7 +16,7 @@ const {
   adminPublishExamCtrl,
   adminUnpublishExamCtrl,
 } = require("../../controller/staff/adminCtrl");
-
+const isLogin = require("../../middlewares/isLogin");
 //register
 
 adminRouter.post("/register", registerAdminCtrl);
@@ -31,7 +31,7 @@ adminRouter.get("/", getAdminsCtrl);
 
 //get single
 
-adminRouter.get("/:id", getAdminCtrl);
+adminRouter.get("/:id", isLogin, getAdminCtrl);
 
 //update
 
