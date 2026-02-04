@@ -61,9 +61,8 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
   if(user && (await user.verifyPassword(password))){
     const token =  generateToken(user._id);
    
-    const verify = verifyToken(token);
   
-    return res.json({data:generateToken(user._id), user, verify})
+    return res.json({data:generateToken(user._id), message: "Admin Logged in  successful"})
   }else {
     return res.json({message : "Invalid ligin crendentials"})
   }
@@ -73,19 +72,14 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
 //@route GET  api/v1/admins
 //@acess Private
 
-exports.getAdminsCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: "All admins",
-    });
-  } catch (error) {
-    res.json({
-      status: "failed",
-      error: error.message,
-    });
-  }
-};
+exports.getAdminsCtrl =  AsyncHandler( async (req, res) => {
+  const admins = await Admin.find()
+  res.status(200).json({
+    statis: "success",
+    data : admins,
+    message: "All admins fetched successfully",
+  })
+});
 
 //@desc single admin
 //@route GET  api/v1/admins/:id
@@ -100,7 +94,7 @@ exports.getAdminProfileCtrl = AsyncHandler( async(req, res)=> {
     res.status(200).json({
       status: "success",
       data: admin,
-
+      message: "Admin profile fetched successfully",
     })
   }
 })
