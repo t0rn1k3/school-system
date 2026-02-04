@@ -6,7 +6,7 @@ const {
   registerAdminCtrl,
   loginAdminCtrl,
   getAdminsCtrl,
-  getAdminCtrl,
+  getAdminProfileCtrl,
   updateAdminCtrl,
   deleteAdminCTRL,
   adminSuspendTeacherCtrl,
@@ -31,7 +31,7 @@ adminRouter.get("/", getAdminsCtrl);
 
 //get single
 
-adminRouter.get("/:id", isLogin, getAdminCtrl);
+adminRouter.get("/profile", isLogin, getAdminProfileCtrl);
 
 //update
 

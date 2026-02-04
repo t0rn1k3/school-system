@@ -91,20 +91,19 @@ exports.getAdminsCtrl = (req, res) => {
 //@route GET  api/v1/admins/:id
 //@acess Private
 
-exports.getAdminCtrl = (req, res) => {
-  try {
-    console.log(req.userAuth);
-    res.status(201).json({
-      status: "sucess",
-      data: "Single admin",
-    });
-  } catch (error) {
-    res.json({
-      status: "failed",
-      error: error.message,
-    });
+exports.getAdminProfileCtrl = AsyncHandler( async(req, res)=> {
+  console.log(req.userAuth);
+  const admin = await Admin.findById(req.userAuth._id).select("-password -createdAt -updatedAt")
+  if(!admin){
+    throw new Error("Admin not found")
+  }else {
+    res.status(200).json({
+      status: "success",
+      data: admin,
+
+    })
   }
-};
+})
 
 //@desc update admin
 //@route PUT  api/v1/admins/:id
