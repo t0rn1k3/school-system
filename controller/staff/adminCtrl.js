@@ -1,6 +1,7 @@
 const AsyncHandler = require("express-async-handler");
 const Admin = require("../../model/Staff/Admin");
 const generateToken = require("../../utils/generateToken");
+const verifyToken = require("../../utils/verifyToken");
 
 //@desc Register admin
 //@route POST  api/v1/admins/register
@@ -9,20 +10,39 @@ const generateToken = require("../../utils/generateToken");
 exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-  // if (!name || !email || !password) {
-  //   res.status(400);
-  //   throw new Error("All fields are required");
-  // }
+  // Validate input
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      message: "All fields are required"
+    });
+  }
 
-  //register
+  // Check if user already exists
+  const existingUser = await Admin.findOne({ 
+    email: email.toLowerCase().trim() 
+  });
+  
+  if (existingUser) {
+    return res.status(409).json({
+      message: "User with this email already exists"
+    });
+  }
+
+  // Register user (email stored in lowercase)
   const user = await Admin.create({
     name,
-    email,
+    email: email.toLowerCase().trim(),
     password,
   });
+  
   res.status(201).json({
     status: "success",
-    data: user,
+    data: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
   });
 });
 
@@ -33,14 +53,19 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
 exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await Admin.findOne({ email });
-  if (!user) {
-    return res.json("Invalid login crendentials");
+  const user = await Admin.findOne({email});
+  if(!user){
+    return res.json({message : "Invalid ligin crendentials"})
   }
-  if (user && user.verifyPassword(password)) {
-    return res.json({ data: generateToken(user._id) });
-  } else {
-    return res.json({ message: "Invalid login crendentials" });
+ 
+  if(user && (await user.verifyPassword(password))){
+    const token =  generateToken(user._id);
+   
+    const verify = verifyToken(token);
+  
+    return res.json({data:generateToken(user._id), user, verify})
+  }else {
+    return res.json({message : "Invalid ligin crendentials"})
   }
 });
 
@@ -68,6 +93,7 @@ exports.getAdminsCtrl = (req, res) => {
 
 exports.getAdminCtrl = (req, res) => {
   try {
+    console.log(req.userAuth);
     res.status(201).json({
       status: "sucess",
       data: "Single admin",
