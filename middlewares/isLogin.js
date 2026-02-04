@@ -5,7 +5,7 @@ const isLogin = async (req, res, next) => {
   // get token from header
   const headerObj = req.headers;
   //verify token
-  const token = headerObj.authorization.split(" ")[1];
+  const token = headerObj?.authorization?.split(" ")[1];
   const verify = verifyToken(token);
   if(verify){
     //find admin
