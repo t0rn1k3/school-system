@@ -10,7 +10,14 @@ const adminRouter = require("../routes/staff/adminRouter");
 const app = express();
 
 //===Middlewares===
-app.use(express.json()); // pass incoming json data
+// Parse JSON - Express 5 compatible (handles missing Content-Type header)
+app.use(express.json({ 
+  type: (req) => {
+    // Accept JSON if Content-Type is application/json OR if Content-Type is missing/undefined
+    const contentType = req.headers['content-type'];
+    return contentType === 'application/json' || !contentType || contentType === undefined;
+  }
+}));
 
 //Routes
 

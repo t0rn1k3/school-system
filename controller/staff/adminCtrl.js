@@ -103,19 +103,69 @@ exports.getAdminProfileCtrl = AsyncHandler( async(req, res)=> {
 //@route PUT  api/v1/admins/:id
 //@acess Private
 
-exports.updateAdminCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: "Update admin",
-    });
-  } catch (error) {
-    res.json({
-      status: "failed",
-      error: error.message,
+exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
+  // If body is empty or has no fields, return current user data
+  if (!req.body || typeof req.body !== 'object' || Object.keys(req.body).length === 0) {
+    const admin = await Admin.findById(req.userAuth._id).select("-password -createdAt -updatedAt");
+    if (!admin) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Admin not found"
+      });
+    }
+    return res.status(200).json({
+      status: "success",
+      message: "Admin profile fetched successfully",
+      data: admin,
     });
   }
-};
+
+  const { email, password, name } = req.body;
+  
+  // Build update object with only provided fields
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) updateData.email = email;
+  if (password !== undefined) updateData.password = password;
+
+  // Check if email already exists
+  if (email) {
+    const emailExist = await Admin.findOne({ 
+      email: email.toLowerCase().trim(),
+      _id: { $ne: req.userAuth._id } // Exclude current user
+    });
+    if (emailExist) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already exists"
+      });
+    }
+    updateData.email = email.toLowerCase().trim();
+  }
+
+  // Update admin with only provided fields
+  const admin = await Admin.findByIdAndUpdate(
+    req.userAuth._id, 
+    updateData,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!admin) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Admin not found"
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Admin updated successfully",
+    data: admin,
+  });
+});
 
 //@desc delete admin
 //@route DELETE  api/v1/admins/:id
