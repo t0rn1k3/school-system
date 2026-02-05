@@ -1,6 +1,8 @@
 const AsyncHandler = require("express-async-handler");
+const bcrypt = require("bcryptjs")
 const Admin = require("../../model/Staff/Admin");
 const generateToken = require("../../utils/generateToken");
+const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
 
 //@desc Register admin
@@ -28,11 +30,12 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Register user (email stored in lowercase)
+
+  // Register user 
   const user = await Admin.create({
     name,
     email: email.toLowerCase().trim(),
-    password,
+    password : await hashPassword(password),
   });
   
   res.status(201).json({
@@ -57,15 +60,15 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
   if(!user){
     return res.json({message : "Invalid ligin crendentials"})
   }
- 
-  if(user && (await user.verifyPassword(password))){
-    const token =  generateToken(user._id);
-   
-  
-    return res.json({data:generateToken(user._id), message: "Admin Logged in  successful"})
-  }else {
+
+  const isMatched = await isPasswordMatched(password, user.password);
+
+  if(!isMatched){
     return res.json({message : "Invalid ligin crendentials"})
+  }else {
+    return res.json({data:generateToken(user._id), message: "Admin Logged in  successful"})
   }
+ 
 });
 
 //@desc all admins
@@ -121,14 +124,8 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
   }
 
   const { email, password, name } = req.body;
-  
-  // Build update object with only provided fields
-  const updateData = {};
-  if (name !== undefined) updateData.name = name;
-  if (email !== undefined) updateData.email = email;
-  if (password !== undefined) updateData.password = password;
 
-  // Check if email already exists
+  // Check if email already exists (only if email is being updated)
   if (email) {
     const emailExist = await Admin.findOne({ 
       email: email.toLowerCase().trim(),
@@ -140,31 +137,71 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
         message: "Email already exists"
       });
     }
-    updateData.email = email.toLowerCase().trim();
   }
 
-  // Update admin with only provided fields
-  const admin = await Admin.findByIdAndUpdate(
-    req.userAuth._id, 
-    updateData,
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  //check if user is updating password
+  if (password) {
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    
+    // Update admin with password
+    const admin = await Admin.findByIdAndUpdate(
+      req.userAuth._id,
+      {
+        email, 
+        name, 
+        password: hashedPassword,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
-  if (!admin) {
-    return res.status(404).json({
-      status: "failed",
-      message: "Admin not found"
+    if (!admin) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Admin not found"
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Admin updated successfully",
+      data: admin,
+    });
+  } else {
+    
+    // Update admin without password
+    const admin = await Admin.findByIdAndUpdate(
+      req.userAuth._id,
+      {
+        email,
+        name,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!admin) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Admin not found"
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Admin updated successfully",
+      data: admin,
     });
   }
 
-  res.status(200).json({
-    status: "success",
-    message: "Admin updated successfully",
-    data: admin,
-  });
+
 });
 
 //@desc delete admin
