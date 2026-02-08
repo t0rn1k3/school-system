@@ -51,3 +51,35 @@ exports.getAcademicYear = AsyncHandler(async (req, res) => {
     data: academiYear,
   });
 });
+
+//@desc Update academic year
+//@route PUT /api/v1/academic-years/:id
+//@access Private
+
+exports.updateAcademicYear = AsyncHandler(async (req, res) => {
+  const { name, fromYear, toYear } = req.body;
+  // check if name is already exists
+
+  const createdAcademicYearFound = await AcademicYear.findOne({ name });
+  if (createdAcademicYearFound) {
+    throw new Error("Academic year name already exists");
+  }
+  const academicYear = await AcademicYear.findByIdAndUpdate(
+    req.params.id,
+    {
+      name,
+      fromYear,
+      toYear,
+      updatedBy: req.userAuth._id,
+    },
+    {
+      new: true,
+    },
+  );
+
+  res.status(201).json({
+    status: "success",
+    message: "Academic year updated successfully",
+    data: academicYear,
+  });
+});
