@@ -1,5 +1,5 @@
 const AsyncHandler = require("express-async-handler");
-const bcrypt = require("bcryptjs")
+const bcrypt = require("bcryptjs");
 const Admin = require("../../model/Staff/Admin");
 const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
@@ -15,29 +15,28 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
   // Validate input
   if (!name || !email || !password) {
     return res.status(400).json({
-      message: "All fields are required"
+      message: "All fields are required",
     });
   }
 
   // Check if user already exists
-  const existingUser = await Admin.findOne({ 
-    email: email.toLowerCase().trim() 
+  const existingUser = await Admin.findOne({
+    email: email.toLowerCase().trim(),
   });
-  
+
   if (existingUser) {
     return res.status(409).json({
-      message: "User with this email already exists"
+      message: "User with this email already exists",
     });
   }
 
-
-  // Register user 
+  // Register user
   const user = await Admin.create({
     name,
     email: email.toLowerCase().trim(),
-    password : await hashPassword(password),
+    password: await hashPassword(password),
   });
-  
+
   res.status(201).json({
     status: "success",
     data: {
@@ -56,64 +55,74 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
 exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await Admin.findOne({email});
-  if(!user){
-    return res.json({message : "Invalid ligin crendentials"})
+  const user = await Admin.findOne({ email });
+  if (!user) {
+    return res.json({ message: "Invalid ligin crendentials" });
   }
 
   const isMatched = await isPasswordMatched(password, user.password);
 
-  if(!isMatched){
-    return res.json({message : "Invalid ligin crendentials"})
-  }else {
-    return res.json({data:generateToken(user._id), message: "Admin Logged in  successful"})
+  if (!isMatched) {
+    return res.json({ message: "Invalid ligin crendentials" });
+  } else {
+    return res.json({
+      data: generateToken(user._id),
+      message: "Admin Logged in  successful",
+    });
   }
- 
 });
 
 //@desc all admins
 //@route GET  api/v1/admins
 //@acess Private
 
-exports.getAdminsCtrl =  AsyncHandler( async (req, res) => {
-  const admins = await Admin.find()
+exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
+  const admins = await Admin.find();
   res.status(200).json({
     statis: "success",
-    data : admins,
+    data: admins,
     message: "All admins fetched successfully",
-  })
+  });
 });
 
 //@desc single admin
 //@route GET  api/v1/admins/:id
 //@acess Private
 
-exports.getAdminProfileCtrl = AsyncHandler( async(req, res)=> {
+exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
   console.log(req.userAuth);
-  const admin = await Admin.findById(req.userAuth._id).select("-password -createdAt -updatedAt")
-  if(!admin){
-    throw new Error("Admin not found")
-  }else {
+  const admin = await Admin.findById(req.userAuth._id)
+    .select("-password -createdAt -updatedAt")
+    .populate("academicYears");
+  if (!admin) {
+    throw new Error("Admin not found");
+  } else {
     res.status(200).json({
       status: "success",
       data: admin,
       message: "Admin profile fetched successfully",
-    })
+    });
   }
-})
+});
 
 //@desc update admin
 //@route PUT  api/v1/admins/:id
 //@acess Private
 
-exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
+exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
   // If body is empty or has no fields, return current user data
-  if (!req.body || typeof req.body !== 'object' || Object.keys(req.body).length === 0) {
-    const admin = await Admin.findById(req.userAuth._id).select("-password -createdAt -updatedAt");
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Object.keys(req.body).length === 0
+  ) {
+    const admin = await Admin.findById(req.userAuth._id).select(
+      "-password -createdAt -updatedAt",
+    );
     if (!admin) {
       return res.status(404).json({
         status: "failed",
-        message: "Admin not found"
+        message: "Admin not found",
       });
     }
     return res.status(200).json({
@@ -127,14 +136,14 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
 
   // Check if email already exists (only if email is being updated)
   if (email) {
-    const emailExist = await Admin.findOne({ 
+    const emailExist = await Admin.findOne({
       email: email.toLowerCase().trim(),
-      _id: { $ne: req.userAuth._id } // Exclude current user
+      _id: { $ne: req.userAuth._id }, // Exclude current user
     });
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
-        message: "Email already exists"
+        message: "Email already exists",
       });
     }
   }
@@ -144,26 +153,25 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
     // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    
-    
+
     // Update admin with password
     const admin = await Admin.findByIdAndUpdate(
       req.userAuth._id,
       {
-        email, 
-        name, 
+        email,
+        name,
         password: hashedPassword,
       },
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!admin) {
       return res.status(404).json({
         status: "failed",
-        message: "Admin not found"
+        message: "Admin not found",
       });
     }
 
@@ -173,7 +181,6 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
       data: admin,
     });
   } else {
-    
     // Update admin without password
     const admin = await Admin.findByIdAndUpdate(
       req.userAuth._id,
@@ -184,13 +191,13 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!admin) {
       return res.status(404).json({
         status: "failed",
-        message: "Admin not found"
+        message: "Admin not found",
       });
     }
 
@@ -200,8 +207,6 @@ exports.updateAdminCtrl =  AsyncHandler( async (req, res) => {
       data: admin,
     });
   }
-
-
 });
 
 //@desc delete admin

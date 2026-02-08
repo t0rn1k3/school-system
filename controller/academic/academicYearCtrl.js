@@ -7,7 +7,7 @@ const Admin = require("../../model/Staff/Admin");
 //@access Private
 
 exports.createAcademicYear = AsyncHandler(async (req, res) => {
-  const { name, fromYear, toYear, isCurrent } = req.body;
+  const { name, fromYear, toYear } = req.body;
   const academicYear = await AcademicYear.findOne({ name });
   if (academicYear) {
     throw new Error("Academic year already exists");
@@ -19,6 +19,11 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
     toYear,
     createdBy: req.userAuth._id,
   });
+
+  // push the academic year to the admin
+  const admin = await Admin.findById(req.userAuth._id);
+  admin.academicYears.push(academicYearCreated._id);
+  admin.save();
   res.status(201).json({
     status: "success",
     message: "Academic year created successfully",
