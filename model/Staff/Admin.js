@@ -61,12 +61,15 @@ const adminSchema = new mongoose.Schema(
         ref: "Student",
       },
     ],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   },
 );
-
 
 //model
 const Admin = mongoose.model("Admin", adminSchema);

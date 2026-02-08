@@ -7,10 +7,34 @@ const Admin = require("../../model/Staff/Admin");
 //@access Private
 
 exports.createAcademicYear = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
   const { name, fromYear, toYear } = req.body;
-  const academicYear = await AcademicYear.findOne({ name });
+
+  // Validate required fields
+  if (!name || !fromYear || !toYear) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Name, fromYear, and toYear are required fields",
+    });
+  }
+
+  // Check if name already exists (ignore soft-deleted records)
+  const academicYear = await AcademicYear.findOne({
+    name,
+    isDeleted: false,
+  });
   if (academicYear) {
-    throw new Error("Academic year already exists");
+    return res.status(409).json({
+      status: "failed",
+      message: "Academic year already exists",
+    });
   }
   //create academic year
   const academicYearCreated = await AcademicYear.create({
@@ -35,8 +59,9 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/academic-years
 //@access Private
 exports.getAcademicYears = AsyncHandler(async (req, res) => {
-  const academicYears = await AcademicYear.find();
-  res.status(201).json({
+  // Only fetch non-deleted academic years
+  const academicYears = await AcademicYear.find({ isDeleted: false });
+  res.status(200).json({
     status: "success",
     message: "Academic years fetched successfully",
     data: academicYears,
@@ -48,9 +73,19 @@ exports.getAcademicYears = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getAcademicYear = AsyncHandler(async (req, res) => {
-  const academiYear = await AcademicYear.findById(req.params.id);
+  const academiYear = await AcademicYear.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+  });
 
-  res.status(201).json({
+  if (!academiYear) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic year not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic year fetched successfully",
     data: academiYear,
@@ -62,27 +97,54 @@ exports.getAcademicYear = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.updateAcademicYear = AsyncHandler(async (req, res) => {
-  const { name, fromYear, toYear } = req.body;
-  // check if name is already exists
-
-  const createdAcademicYearFound = await AcademicYear.findOne({ name });
-  if (createdAcademicYearFound) {
-    throw new Error("Academic year name already exists");
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
   }
-  const academicYear = await AcademicYear.findByIdAndUpdate(
-    req.params.id,
-    {
+
+  const { name, fromYear, toYear } = req.body;
+
+  // Check if name already exists (ignore soft-deleted records and current record)
+  if (name) {
+    const createdAcademicYearFound = await AcademicYear.findOne({
       name,
-      fromYear,
-      toYear,
-      updatedBy: req.userAuth._id,
-    },
+      isDeleted: false,
+      _id: { $ne: req.params.id }, // Exclude current academic year
+    });
+    if (createdAcademicYearFound) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Academic year name already exists",
+      });
+    }
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (fromYear !== undefined) updateData.fromYear = fromYear;
+  if (toYear !== undefined) updateData.toYear = toYear;
+  updateData.updatedBy = req.userAuth._id;
+
+  const academicYear = await AcademicYear.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: false },
+    updateData,
     {
       new: true,
     },
   );
 
-  res.status(201).json({
+  if (!academicYear) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic year not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic year updated successfully",
     data: academicYear,
@@ -94,8 +156,23 @@ exports.updateAcademicYear = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.deleteAcademicYear = AsyncHandler(async (req, res) => {
-  await AcademicYear.findByIdAndDelete(req.params.id);
-  res.status(201).json({
+  // Soft delete: Set isDeleted to true instead of hard delete
+  const academicYear = await AcademicYear.findByIdAndUpdate(
+    req.params.id,
+    {
+      isDeleted: true,
+    },
+    { new: true },
+  );
+
+  if (!academicYear) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic year not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic year deleted successfully",
   });

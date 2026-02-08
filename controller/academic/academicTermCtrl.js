@@ -7,10 +7,26 @@ const AcademicTerm = require("../../model/Academic/AcademicTerm");
 //@access Private
 
 exports.createAcademicTerm = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
   const { name, description, duration } = req.body;
-  const academicTerm = await AcademicTerm.findOne({ name });
+
+  // Check if name already exists (ignore soft-deleted records)
+  const academicTerm = await AcademicTerm.findOne({
+    name,
+    isDeleted: false,
+  });
   if (academicTerm) {
-    throw new Error("Academic term already exists");
+    return res.status(409).json({
+      status: "failed",
+      message: "Academic term already exists",
+    });
   }
   //create academic term
   const academicTermCreated = await AcademicTerm.create({
@@ -35,8 +51,9 @@ exports.createAcademicTerm = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/academic-terms
 //@access Private
 exports.getAcademicTerms = AsyncHandler(async (req, res) => {
-  const academicTerms = await AcademicTerm.find();
-  res.status(201).json({
+  // Only fetch non-deleted academic terms
+  const academicTerms = await AcademicTerm.find({ isDeleted: false });
+  res.status(200).json({
     status: "success",
     message: "Academic terms fetched successfully",
     data: academicTerms,
@@ -48,9 +65,19 @@ exports.getAcademicTerms = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getAcademicTerm = AsyncHandler(async (req, res) => {
-  const academicTerm = await AcademicTerm.findById(req.params.id);
+  const academicTerm = await AcademicTerm.findOne({
+    _id: req.params.id,
+    isDeleted: false,
+  });
 
-  res.status(201).json({
+  if (!academicTerm) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic term not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic term fetched successfully",
     data: academicTerm,
@@ -62,27 +89,54 @@ exports.getAcademicTerm = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.updateAcademicTerm = AsyncHandler(async (req, res) => {
-  const { name, description, duration } = req.body;
-  // check if name is already exists
-
-  const createdAcademicTermFound = await AcademicTerm.findOne({ name });
-  if (createdAcademicTermFound) {
-    throw new Error("Academic term name already exists");
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
   }
-  const academicTerm = await AcademicTerm.findByIdAndUpdate(
-    req.params.id,
-    {
+
+  const { name, description, duration } = req.body;
+
+  // Check if name already exists (ignore soft-deleted records and current record)
+  if (name) {
+    const createdAcademicTermFound = await AcademicTerm.findOne({
       name,
-      description,
-      duration,
-      updatedBy: req.userAuth._id,
-    },
+      isDeleted: false,
+      _id: { $ne: req.params.id }, // Exclude current academic term
+    });
+    if (createdAcademicTermFound) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Academic term name already exists",
+      });
+    }
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (duration !== undefined) updateData.duration = duration;
+  updateData.updatedBy = req.userAuth._id;
+
+  const academicTerm = await AcademicTerm.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: false },
+    updateData,
     {
       new: true,
     },
   );
 
-  res.status(201).json({
+  if (!academicTerm) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic term not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic term updated successfully",
     data: academicTerm,
@@ -94,8 +148,23 @@ exports.updateAcademicTerm = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.deleteAcademicTerm = AsyncHandler(async (req, res) => {
-  await AcademicTerm.findByIdAndDelete(req.params.id);
-  res.status(201).json({
+  // Soft delete: Set isDeleted to true instead of hard delete
+  const academicTerm = await AcademicTerm.findByIdAndUpdate(
+    req.params.id,
+    {
+      isDeleted: true,
+    },
+    { new: true },
+  );
+
+  if (!academicTerm) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Academic term not found",
+    });
+  }
+
+  res.status(200).json({
     status: "success",
     message: "Academic term deleted successfully",
   });

@@ -6,7 +6,7 @@ const {
 } = require("../middlewares/globalErrorHandler");
 
 const AcademicYearRouter = require("../routes/academics/academicYearRouter");
-
+const AcademicTermRouter = require("../routes/academics/academicTermRouter");
 const adminRouter = require("../routes/staff/adminRouter");
 
 const app = express();
@@ -31,6 +31,7 @@ app.use(
 
 app.use("/api/v1/academic-years", AcademicYearRouter);
 app.use("/api/v1/admins", adminRouter);
+app.use("/api/v1/academic-terms", AcademicTermRouter);
 
 // Error Handler
 app.use(pageNotFound);

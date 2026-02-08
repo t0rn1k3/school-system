@@ -35,6 +35,10 @@ const academicYearSchema = new mongoose.Schema(
         ref: "Teacher",
       },
     ],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     //Finance
     //Librarian
     //......

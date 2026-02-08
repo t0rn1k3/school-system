@@ -19,9 +19,10 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user already exists
+  // Check if user already exists (ignore soft-deleted records)
   const existingUser = await Admin.findOne({
     email: email.toLowerCase().trim(),
+    isDeleted: false,
   });
 
   if (existingUser) {
@@ -77,9 +78,10 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
 //@acess Private
 
 exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
-  const admins = await Admin.find();
+  // Only fetch non-deleted admins
+  const admins = await Admin.find({ isDeleted: false });
   res.status(200).json({
-    statis: "success",
+    status: "success",
     data: admins,
     message: "All admins fetched successfully",
   });
@@ -90,19 +92,23 @@ exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
 //@acess Private
 
 exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
-  console.log(req.userAuth);
-  const admin = await Admin.findById(req.userAuth._id)
+  const admin = await Admin.findOne({
+    _id: req.userAuth._id,
+    isDeleted: false,
+  })
     .select("-password -createdAt -updatedAt")
     .populate("academicYears");
   if (!admin) {
-    throw new Error("Admin not found");
-  } else {
-    res.status(200).json({
-      status: "success",
-      data: admin,
-      message: "Admin profile fetched successfully",
+    return res.status(404).json({
+      status: "failed",
+      message: "Admin not found",
     });
   }
+  res.status(200).json({
+    status: "success",
+    data: admin,
+    message: "Admin profile fetched successfully",
+  });
 });
 
 //@desc update admin
@@ -116,9 +122,10 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     typeof req.body !== "object" ||
     Object.keys(req.body).length === 0
   ) {
-    const admin = await Admin.findById(req.userAuth._id).select(
-      "-password -createdAt -updatedAt",
-    );
+    const admin = await Admin.findOne({
+      _id: req.userAuth._id,
+      isDeleted: false,
+    }).select("-password -createdAt -updatedAt");
     if (!admin) {
       return res.status(404).json({
         status: "failed",
@@ -134,11 +141,12 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
 
   const { email, password, name } = req.body;
 
-  // Check if email already exists (only if email is being updated)
+  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
   if (email) {
     const emailExist = await Admin.findOne({
       email: email.toLowerCase().trim(),
       _id: { $ne: req.userAuth._id }, // Exclude current user
+      isDeleted: false, // Ignore soft-deleted admins
     });
     if (emailExist) {
       return res.status(409).json({
@@ -154,14 +162,15 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Build update object with only provided fields
+    const updateData = { password: hashedPassword };
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
     // Update admin with password
-    const admin = await Admin.findByIdAndUpdate(
-      req.userAuth._id,
-      {
-        email,
-        name,
-        password: hashedPassword,
-      },
+    const admin = await Admin.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: false },
+      updateData,
       {
         new: true,
         runValidators: true,
@@ -181,13 +190,15 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
       data: admin,
     });
   } else {
+    // Build update object with only provided fields (no password)
+    const updateData = {};
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
     // Update admin without password
-    const admin = await Admin.findByIdAndUpdate(
-      req.userAuth._id,
-      {
-        email,
-        name,
-      },
+    const admin = await Admin.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: false },
+      updateData,
       {
         new: true,
         runValidators: true,
@@ -213,19 +224,28 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
 //@route DELETE  api/v1/admins/:id
 //@acess Private
 
-exports.deleteAdminCTRL = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: "Delete admin",
-    });
-  } catch (error) {
-    res.json({
+exports.deleteAdminCTRL = AsyncHandler(async (req, res) => {
+  // Soft delete: Set isDeleted to true instead of hard delete
+  const admin = await Admin.findByIdAndUpdate(
+    req.params.id,
+    {
+      isDeleted: true,
+    },
+    { new: true },
+  );
+
+  if (!admin) {
+    return res.status(404).json({
       status: "failed",
-      error: error.message,
+      message: "Admin not found",
     });
   }
-};
+
+  res.status(200).json({
+    status: "success",
+    message: "Admin deleted successfully",
+  });
+});
 
 //@desc suspend teacher
 //@route PUT  api/v1/admins/suspend/teacher/:id

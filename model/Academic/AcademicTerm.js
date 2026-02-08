@@ -22,6 +22,10 @@ const academicTermSchema = new Schema(
       ref: "Admin",
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
