@@ -37,6 +37,10 @@ const ClassLevelSchema = new Schema(
         ref: "Teacher",
       },
     ],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

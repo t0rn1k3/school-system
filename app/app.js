@@ -8,6 +8,7 @@ const {
 const AcademicYearRouter = require("../routes/academics/academicYearRouter");
 const AcademicTermRouter = require("../routes/academics/academicTermRouter");
 const adminRouter = require("../routes/staff/adminRouter");
+const ClassLevelRouter = require("../routes/academics/classLevelRouter");
 
 const app = express();
 
@@ -32,7 +33,7 @@ app.use(
 app.use("/api/v1/academic-years", AcademicYearRouter);
 app.use("/api/v1/admins", adminRouter);
 app.use("/api/v1/academic-terms", AcademicTermRouter);
-
+app.use("/api/v1/class-levels", ClassLevelRouter);
 // Error Handler
 app.use(pageNotFound);
 
