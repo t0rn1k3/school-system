@@ -11,14 +11,16 @@ const isAdmin = async (req, res, next) => {
       });
     }
 
-    // Find user
-    const userId = req.userAuth._id;
-    if (!userId) {
+    // Check if user is authenticated first
+    if (!req.userAuth || !req.userAuth._id) {
       return res.status(401).json({
         status: "failed",
-        message: "User authentication required",
+        message: "Access denied. Admin authentication required",
       });
     }
+
+    // Find user
+    const userId = req.userAuth._id;
 
     const adminFound = await Admin.findById(userId);
 

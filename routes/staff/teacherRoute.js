@@ -3,10 +3,11 @@ const express = require("express");
 const teacherRouter = express.Router();
 const {
   adminRegisterTeacherCtrl,
+  teacherLoginCtrl,
+  getTeachersCtrl,
 } = require("../../controller/staff/teachersCtrl");
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
-const { teacherLoginCtrl } = require("../../controller/staff/teachersCtrl");
 
 teacherRouter.post(
   "/admin/register",
@@ -16,5 +17,6 @@ teacherRouter.post(
 );
 
 teacherRouter.post("/login", teacherLoginCtrl);
+teacherRouter.get("/admin", isLogin, isAdmin, getTeachersCtrl);
 
 module.exports = teacherRouter;

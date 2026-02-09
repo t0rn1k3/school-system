@@ -89,3 +89,19 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
     });
   }
 });
+
+//@dec get all teachers
+//@route GET /api/v1/teachers/
+//@access Private admins only
+
+exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
+  // Only fetch non-deleted teachers (handle documents without isDeleted field)
+  const teachers = await Teacher.find({
+    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+  });
+  res.status(200).json({
+    status: "success",
+    data: teachers,
+    message: "All teachers fetched successfully",
+  });
+});
