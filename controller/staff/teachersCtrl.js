@@ -105,3 +105,23 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
     message: "All teachers fetched successfully",
   });
 });
+
+//@dec get single teacher
+//@route GET /api/v1/teachers/:teacherId/admin
+//@access Private admins only
+
+exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
+  const teacherId = req.params.teacherId;
+  const teacher = await Teacher.findById(teacherId);
+  if (!teacher) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    data: teacher,
+    message: "Teacher fetched successfully",
+  });
+});
