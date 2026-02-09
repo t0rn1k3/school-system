@@ -6,9 +6,12 @@ const {
   teacherLoginCtrl,
   getTeachersCtrl,
   getSingleTeacherCtrl,
+  getTeacherProfileCtrl,
 } = require("../../controller/staff/teachersCtrl");
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
+const isTeacherLogin = require("../../middlewares/isTeacherLogin");
+const isTeacher = require("../../middlewares/isTeacher");
 
 teacherRouter.post(
   "/admin/register",
@@ -19,5 +22,6 @@ teacherRouter.post(
 
 teacherRouter.post("/login", teacherLoginCtrl);
 teacherRouter.get("/admin", isLogin, isAdmin, getTeachersCtrl);
+teacherRouter.get("/profile", isTeacherLogin, isTeacher, getTeacherProfileCtrl);
 teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, getSingleTeacherCtrl);
 module.exports = teacherRouter;

@@ -11,16 +11,21 @@ const isTeacher = async (req, res, next) => {
       });
     }
 
-    // Find user
-    const userId = req.userAuth._id;
-    if (!userId) {
+    // Check if user is authenticated first
+    if (!req.userAuth || !req.userAuth._id) {
       return res.status(401).json({
         status: "failed",
-        message: "User authentication required",
+        message: "Access denied. Invalid or missing authentication token.",
       });
     }
 
-    const teacherFound = await Teacher.findById(userId);
+    // Find user
+    const userId = req.userAuth._id;
+
+    const teacherFound = await Teacher.findOne({
+      _id: userId,
+      isDeleted: { $ne: true }, // Ignore soft-deleted teachers
+    });
 
     // Check teacher
     if (teacherFound?.role === "teacher") {
