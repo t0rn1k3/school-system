@@ -16,6 +16,10 @@ const yearGroupSchema = new mongoose.Schema(
       ref: "AcademicYear",
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
