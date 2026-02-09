@@ -1,4 +1,5 @@
 const AsyncHandler = require("express-async-handler");
+const bcrypt = require("bcryptjs");
 const Teacher = require("../../model/Staff/Teacher");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
@@ -112,7 +113,10 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
 
 exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
   const teacherId = req.params.teacherId;
-  const teacher = await Teacher.findById(teacherId);
+  const teacher = await Teacher.findOne({
+    _id: teacherId,
+    isDeleted: { $ne: true },
+  });
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -131,9 +135,10 @@ exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
-  const teacher = await Teacher.findOne(req.userAuth?._id).select(
-    "-password -createdAt -updatedAt",
-  );
+  const teacher = await Teacher.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  }).select("-password -createdAt -updatedAt");
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -145,4 +150,123 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
     data: teacher,
     message: "Teacher profile fetched successfully",
   });
+});
+
+//@dec update teacher profile
+//@route PUT /api/v1/teachers/:teacherId/update
+//@access Private teachers only
+
+exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
+  const teacherId = req.params.teacherId;
+
+  // Verify that the teacher can only update their own profile
+  if (teacherId !== req.userAuth._id.toString()) {
+    return res.status(403).json({
+      status: "failed",
+      message: "You can only update your own profile",
+    });
+  }
+
+  // If body is empty or has no fields, return current user data
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Object.keys(req.body).length === 0
+  ) {
+    const teacher = await Teacher.findOne({
+      _id: req.userAuth._id,
+      isDeleted: { $ne: true },
+    }).select("-password -createdAt -updatedAt");
+    if (!teacher) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Teacher not found",
+      });
+    }
+    return res.status(200).json({
+      status: "success",
+      message: "Teacher profile fetched successfully",
+      data: teacher,
+    });
+  }
+
+  const { email, password, name } = req.body;
+
+  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
+  if (email) {
+    const emailExist = await Teacher.findOne({
+      email: email.toLowerCase().trim(),
+      _id: { $ne: req.userAuth._id }, // Exclude current user
+      isDeleted: { $ne: true }, // Ignore soft-deleted teachers
+    });
+    if (emailExist) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already exists",
+      });
+    }
+  }
+
+  //check if user is updating password
+  if (password) {
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Build update object with only provided fields
+    const updateData = { password: hashedPassword };
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
+    // Update teacher with password
+    const teacher = await Teacher.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: { $ne: true } },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Teacher not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Teacher updated successfully",
+      data: teacher,
+    });
+  } else {
+    // Build update object with only provided fields (no password)
+    const updateData = {};
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
+    // Update teacher without password
+    const teacher = await Teacher.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: { $ne: true } },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Teacher not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Teacher updated successfully",
+      data: teacher,
+    });
+  }
 });
