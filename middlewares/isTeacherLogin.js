@@ -1,7 +1,7 @@
 const verifyToken = require("../utils/verifyToken");
-const Admin = require("../model/Staff/Admin");
+const Teacher = require("../model/Staff/Teacher");
 
-const isLogin = async (req, res, next) => {
+const isTeacherLogin = async (req, res, next) => {
   // get token from header
   const headerObj = req.headers;
   //verify token
@@ -9,7 +9,7 @@ const isLogin = async (req, res, next) => {
   const verify = verifyToken(token);
   if (verify) {
     //find admin
-    const user = await Admin.findById(verify.id).select("name email role");
+    const user = await Teacher.findById(verify.id).select("name email role");
     //save user id in req.obj
     req.userAuth = user;
     next();
