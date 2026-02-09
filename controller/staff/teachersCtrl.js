@@ -270,3 +270,89 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
     });
   }
 });
+
+//@des admin update teacher profile
+//@route PUT /api/v1/teachers/:teacherId/admin
+//@access Private admins only
+
+exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
+  const { program, classLevel, academicYear, subject, name, email } = req.body;
+  const teacherId = req.params.teacherId; // Fixed: was teacherID (wrong case)
+
+  // Find teacher (ignore soft-deleted)
+  const teacherFound = await Teacher.findOne({
+    _id: teacherId,
+    isDeleted: { $ne: true },
+  });
+
+  if (!teacherFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+
+  // Check if teacher is withdrawn
+  if (teacherFound.isWithdrawn) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Action denied, teacher is withdrawn",
+    });
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (program !== undefined) updateData.program = program;
+  if (classLevel !== undefined) updateData.classLevel = classLevel;
+  if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (subject !== undefined) updateData.subject = subject;
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) {
+    // Check if email already exists (if email is being updated)
+    const emailExist = await Teacher.findOne({
+      email: email.toLowerCase().trim(),
+      _id: { $ne: teacherId },
+      isDeleted: { $ne: true },
+    });
+    if (emailExist) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already exists",
+      });
+    }
+    updateData.email = email.toLowerCase().trim();
+  }
+
+  // If no fields to update, return current teacher data
+  if (Object.keys(updateData).length === 0) {
+    return res.status(200).json({
+      status: "success",
+      message: "No fields to update",
+      data: teacherFound,
+    });
+  }
+
+  // Update teacher with all fields at once
+  const updatedTeacher = await Teacher.findByIdAndUpdate(
+    teacherId,
+    updateData,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: updatedTeacher,
+    message: "Teacher updated successfully",
+  });
+});

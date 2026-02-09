@@ -13,6 +13,7 @@ const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
 const isTeacherLogin = require("../../middlewares/isTeacherLogin");
 const isTeacher = require("../../middlewares/isTeacher");
+const { adminUpdateTeacher } = require("../../controller/staff/teachersCtrl");
 
 teacherRouter.post(
   "/admin/register",
@@ -30,5 +31,11 @@ teacherRouter.put(
   isTeacherLogin,
   isTeacher,
   updateTeacherProfileCtrl,
+);
+teacherRouter.put(
+  "/:teacherId/update/admin",
+  isLogin,
+  isAdmin,
+  adminUpdateTeacher,
 );
 module.exports = teacherRouter;
