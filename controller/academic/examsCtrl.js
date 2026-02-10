@@ -152,3 +152,15 @@ exports.getExams = AsyncHandler(async (req, res) => {
     data: exams,
   });
 });
+
+//@desc Get single exam
+//@route GET /api/v1/exams/:id
+//@access Private
+exports.getExam = AsyncHandler(async (req, res) => {
+  const exam = await Exam.findById(req.params.id);
+  res.status(200).json({
+    status: "success",
+    message: "Exam fetched successfully",
+    data: exam,
+  });
+});
