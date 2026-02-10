@@ -7,6 +7,14 @@ const Teacher = require("../../model/Staff/Teacher");
 //@access Private teachers only
 
 exports.createExam = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
   const {
     name,
     description,
@@ -17,12 +25,24 @@ exports.createExam = AsyncHandler(async (req, res) => {
     examDate,
     examTime,
     examType,
-    createdBy,
     academicYear,
+    classLevel,
   } = req.body;
 
+  // Validate required fields
+  if (!name || !description || !subject || !program || !academicTerm || 
+      !duration || !examTime || !examType || !academicYear || !classLevel) {
+    return res.status(400).json({
+      status: "failed",
+      message: "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear, classLevel",
+    });
+  }
+
   //find the teacher
-  const teacherFound = await Teacher.findById(req.userAuth._id);
+  const teacherFound = await Teacher.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
 
   if (!teacherFound) {
     return res.status(404).json({
@@ -31,8 +51,11 @@ exports.createExam = AsyncHandler(async (req, res) => {
     });
   }
 
-  //exam exists
-  const examExists = await Exam.findOne({ name });
+  //exam exists (ignore soft-deleted)
+  const examExists = await Exam.findOne({ 
+    name,
+    isDeleted: { $ne: true },
+  });
   if (examExists) {
     return res.status(409).json({
       status: "failed",
@@ -40,8 +63,43 @@ exports.createExam = AsyncHandler(async (req, res) => {
     });
   }
 
-  // exam created
+  // Parse examDate - handle string dates like "20th December"
+  let parsedExamDate;
+  if (examDate) {
+    if (typeof examDate === 'string') {
+      // Remove ordinal suffixes (st, nd, rd, th) and try parsing
+      const cleanedDate = examDate.replace(/(\d+)(st|nd|rd|th)\s+/i, '$1 ');
+      parsedExamDate = new Date(cleanedDate);
+      
+      // If invalid date, try adding current year
+      if (isNaN(parsedExamDate.getTime())) {
+        const currentYear = new Date().getFullYear();
+        parsedExamDate = new Date(`${cleanedDate} ${currentYear}`);
+      }
+      
+      // If still invalid, return error
+      if (isNaN(parsedExamDate.getTime())) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Invalid examDate format. Please use a valid date format (e.g., '2024-12-20', 'December 20, 2024', or ISO date string)",
+        });
+      }
+    } else if (examDate instanceof Date) {
+      parsedExamDate = examDate;
+    } else {
+      parsedExamDate = new Date(examDate);
+      if (isNaN(parsedExamDate.getTime())) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Invalid examDate format",
+        });
+      }
+    }
+  } else {
+    parsedExamDate = new Date(); // Default to current date
+  }
 
+  // exam created
   const examCreated = await Exam.create({
     name,
     description,
@@ -49,17 +107,16 @@ exports.createExam = AsyncHandler(async (req, res) => {
     program,
     academicTerm,
     duration,
-    examDate,
+    examDate: parsedExamDate,
     examTime,
     examType,
-    createdBy,
     academicYear,
+    classLevel, // Added missing classLevel field
+    createdBy: req.userAuth._id,
   });
 
   // push the exam to the teacher
-
   teacherFound.examsCreated.push(examCreated._id);
-  await examCreated.save();
   await teacherFound.save();
 
   res.status(201).json({

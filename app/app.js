@@ -13,6 +13,7 @@ const SubjectRouter = require("../routes/academics/subjectRouter");
 const YearGroupRouter = require("../routes/academics/yearGroupsRouter");
 const adminRouter = require("../routes/staff/adminRouter");
 const teacherRouter = require("../routes/staff/teacherRoute");
+const examRouter = require("../routes/academics/examRoute");
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/v1/programs", ProgramRouter);
 app.use("/api/v1/subjects", SubjectRouter);
 app.use("/api/v1/year-groups", YearGroupRouter);
 app.use("/api/v1/teachers", teacherRouter);
+app.use("/api/v1/exams", examRouter);
 // Error Handler
 app.use(pageNotFound);
 

@@ -80,11 +80,6 @@ const examSchema = new Schema(
       ref: "Teacher",
       required: true,
     },
-    academicTerm: {
-      type: Schema.Types.ObjectId,
-      ref: "AcademicTerm",
-      required: true,
-    },
     academicYear: {
       type: Schema.Types.ObjectId,
       ref: "AcademicYear",
