@@ -157,10 +157,135 @@ exports.getExams = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/exams/:id
 //@access Private
 exports.getExam = AsyncHandler(async (req, res) => {
-  const exam = await Exam.findById(req.params.id);
+  const exam = await Exam.findOne({
+    _id: req.params.id,
+    isDeleted: { $ne: true }, // Ignore soft-deleted exams
+  });
+
+  if (!exam) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam not found",
+    });
+  }
+
   res.status(200).json({
     status: "success",
     message: "Exam fetched successfully",
     data: exam,
+  });
+});
+
+//@desc Update exam
+//@route PUT /api/v1/exams/:id
+//@access Private
+
+exports.updateExam = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
+  const {
+    name,
+    description,
+    subject,
+    program,
+    academicTerm,
+    duration,
+    examDate,
+    examTime,
+    examType,
+    academicYear,
+    classLevel,
+  } = req.body;
+
+  // Check if name already exists (only if name is being updated, exclude current exam)
+  if (name) {
+    const examFound = await Exam.findOne({
+      name,
+      _id: { $ne: req.params.id }, // Exclude current exam
+      isDeleted: { $ne: true }, // Ignore soft-deleted exams
+    });
+    if (examFound) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Exam name already exists",
+      });
+    }
+  }
+
+  // Parse examDate if provided (same logic as create)
+  let parsedExamDate;
+  if (examDate !== undefined) {
+    if (typeof examDate === "string") {
+      const cleanedDate = examDate.replace(/(\d+)(st|nd|rd|th)\s+/i, "$1 ");
+      parsedExamDate = new Date(cleanedDate);
+
+      if (isNaN(parsedExamDate.getTime())) {
+        const currentYear = new Date().getFullYear();
+        parsedExamDate = new Date(`${cleanedDate} ${currentYear}`);
+      }
+
+      if (isNaN(parsedExamDate.getTime())) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Invalid examDate format. Please use a valid date format",
+        });
+      }
+    } else if (examDate instanceof Date) {
+      parsedExamDate = examDate;
+    } else {
+      parsedExamDate = new Date(examDate);
+      if (isNaN(parsedExamDate.getTime())) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Invalid examDate format",
+        });
+      }
+    }
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (subject !== undefined) updateData.subject = subject;
+  if (program !== undefined) updateData.program = program;
+  if (academicTerm !== undefined) updateData.academicTerm = academicTerm;
+  if (duration !== undefined) updateData.duration = duration;
+  if (examDate !== undefined) updateData.examDate = parsedExamDate;
+  if (examTime !== undefined) updateData.examTime = examTime;
+  if (examType !== undefined) updateData.examType = examType;
+  if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (classLevel !== undefined) updateData.classLevel = classLevel;
+  // Don't update createdBy on update
+
+  const examUploaded = await Exam.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      isDeleted: { $ne: true }, // Ignore soft-deleted exams
+    },
+    updateData,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  if (!examUploaded) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam not found",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Exam updated successfully",
+    data: examUploaded,
   });
 });
