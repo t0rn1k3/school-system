@@ -30,11 +30,22 @@ exports.createExam = AsyncHandler(async (req, res) => {
   } = req.body;
 
   // Validate required fields
-  if (!name || !description || !subject || !program || !academicTerm || 
-      !duration || !examTime || !examType || !academicYear || !classLevel) {
+  if (
+    !name ||
+    !description ||
+    !subject ||
+    !program ||
+    !academicTerm ||
+    !duration ||
+    !examTime ||
+    !examType ||
+    !academicYear ||
+    !classLevel
+  ) {
     return res.status(400).json({
       status: "failed",
-      message: "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear, classLevel",
+      message:
+        "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear, classLevel",
     });
   }
 
@@ -52,7 +63,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   }
 
   //exam exists (ignore soft-deleted)
-  const examExists = await Exam.findOne({ 
+  const examExists = await Exam.findOne({
     name,
     isDeleted: { $ne: true },
   });
@@ -66,22 +77,23 @@ exports.createExam = AsyncHandler(async (req, res) => {
   // Parse examDate - handle string dates like "20th December"
   let parsedExamDate;
   if (examDate) {
-    if (typeof examDate === 'string') {
+    if (typeof examDate === "string") {
       // Remove ordinal suffixes (st, nd, rd, th) and try parsing
-      const cleanedDate = examDate.replace(/(\d+)(st|nd|rd|th)\s+/i, '$1 ');
+      const cleanedDate = examDate.replace(/(\d+)(st|nd|rd|th)\s+/i, "$1 ");
       parsedExamDate = new Date(cleanedDate);
-      
+
       // If invalid date, try adding current year
       if (isNaN(parsedExamDate.getTime())) {
         const currentYear = new Date().getFullYear();
         parsedExamDate = new Date(`${cleanedDate} ${currentYear}`);
       }
-      
+
       // If still invalid, return error
       if (isNaN(parsedExamDate.getTime())) {
         return res.status(400).json({
           status: "failed",
-          message: "Invalid examDate format. Please use a valid date format (e.g., '2024-12-20', 'December 20, 2024', or ISO date string)",
+          message:
+            "Invalid examDate format. Please use a valid date format (e.g., '2024-12-20', 'December 20, 2024', or ISO date string)",
         });
       }
     } else if (examDate instanceof Date) {
@@ -123,5 +135,20 @@ exports.createExam = AsyncHandler(async (req, res) => {
     status: "success",
     message: "Exam created successfully",
     data: examCreated,
+  });
+});
+
+//@desc Get all exams
+//@route GET /api/v1/exams
+//@access Private
+exports.getExams = AsyncHandler(async (req, res) => {
+  // Only fetch non-deleted exams (handle documents without isDeleted field)
+  const exams = await Exam.find({
+    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+  });
+  res.status(200).json({
+    status: "success",
+    message: "Exams fetched successfully",
+    data: exams,
   });
 });
