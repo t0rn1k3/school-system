@@ -2,6 +2,7 @@ const AsyncHandler = require("express-async-handler");
 const Student = require("../../model/Academic/Student");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
+const bcrypt = require("bcryptjs");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -148,5 +149,251 @@ exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
     status: "success",
     data: student,
     message: "Student fetched successfully",
+  });
+});
+
+//@dec update student profile
+//@route PUT /api/v1/students/profile (self-update) or PUT /api/v1/students/:studentId (admin update)
+//@access Private students only (for profile) or Private admin only (for :studentId)
+
+exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
+  const studentId = req.params.studentId;
+
+  // Verify that the student can only update their own profile
+  if (studentId !== req.userAuth._id.toString()) {
+    return res.status(403).json({
+      status: "failed",
+      message: "You can only update your own profile",
+    });
+  }
+
+  // If body is empty or has no fields, return current user data
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Object.keys(req.body).length === 0
+  ) {
+    const student = await Student.findOne({
+      _id: req.userAuth._id,
+      isDeleted: { $ne: true },
+    }).select("-password -createdAt -updatedAt");
+    if (!student) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Student not found",
+      });
+    }
+    return res.status(200).json({
+      status: "success",
+      message: "Student profile fetched successfully",
+      data: student,
+    });
+  }
+
+  const { email, password, name } = req.body;
+
+  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
+  if (email) {
+    const emailExist = await Student.findOne({
+      email: email.toLowerCase().trim(),
+      _id: { $ne: req.userAuth._id }, // Exclude current user
+      isDeleted: { $ne: true }, // Ignore soft-deleted students
+    });
+    if (emailExist) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already exists",
+      });
+    }
+  }
+
+  //check if user is updating password
+  if (password) {
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Build update object with only provided fields
+    const updateData = { password: hashedPassword };
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
+    // Update student with password
+    const student = await Student.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: { $ne: true } },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!student) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Student not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Student updated successfully",
+      data: student,
+    });
+  } else {
+    // Build update object with only provided fields (no password)
+    const updateData = {};
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (name) updateData.name = name;
+
+    // Update student without password
+    const student = await Student.findOneAndUpdate(
+      { _id: req.userAuth._id, isDeleted: { $ne: true } },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!student) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Student not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Student updated successfully",
+      data: student,
+    });
+  }
+});
+
+//@des admin update student profile
+//@route PUT /api/v1/students/:studentId/admin
+//@access Private admins only
+
+exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
+  // Validate request body exists
+  if (!req.body || typeof req.body !== "object") {
+    return res.status(400).json({
+      status: "failed",
+      message: "Request body is required",
+    });
+  }
+
+  const studentId = req.params.studentId;
+
+  // Find student (ignore soft-deleted)
+  const studentFound = await Student.findOne({
+    _id: studentId,
+    isDeleted: { $ne: true },
+  });
+
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  // If body is empty or has no fields, return current student data
+  if (Object.keys(req.body).length === 0) {
+    return res.status(200).json({
+      status: "success",
+      message: "Student profile fetched successfully",
+      data: studentFound,
+    });
+  }
+
+  const {
+    program,
+    classLevels,
+    academicYear,
+    name,
+    email,
+    password,
+    isWithdrawn,
+    isSuspended,
+    isPromotedToLevel200,
+    isPromotedToLevel300,
+    isPromotedToLevel400,
+    isGraduated,
+    dateAdmitted,
+    yearGraduated,
+    prefectName,
+  } = req.body;
+
+  // Check if student is withdrawn (only block if not explicitly un-withdrawing)
+  if (studentFound.isWithdrawn && isWithdrawn !== false) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Action denied, student is withdrawn",
+    });
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (program !== undefined) updateData.program = program;
+  if (classLevels !== undefined) updateData.classLevels = classLevels;
+  if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) {
+    // Check if email already exists (if email is being updated)
+    const emailExist = await Student.findOne({
+      email: email.toLowerCase().trim(),
+      _id: { $ne: studentId },
+      isDeleted: { $ne: true },
+    });
+    if (emailExist) {
+      return res.status(409).json({
+        status: "failed",
+        message: "Email already exists",
+      });
+    }
+    updateData.email = email.toLowerCase().trim();
+  }
+  if (password !== undefined) {
+    const salt = await bcrypt.genSalt(10);
+    updateData.password = await bcrypt.hash(password, salt);
+  }
+  if (isWithdrawn !== undefined) updateData.isWithdrawn = isWithdrawn;
+  if (isSuspended !== undefined) updateData.isSuspended = isSuspended;
+  if (isPromotedToLevel200 !== undefined)
+    updateData.isPromotedToLevel200 = isPromotedToLevel200;
+  if (isPromotedToLevel300 !== undefined)
+    updateData.isPromotedToLevel300 = isPromotedToLevel300;
+  if (isPromotedToLevel400 !== undefined)
+    updateData.isPromotedToLevel400 = isPromotedToLevel400;
+  if (isGraduated !== undefined) updateData.isGraduated = isGraduated;
+  if (dateAdmitted !== undefined) updateData.dateAdmitted = dateAdmitted;
+  if (yearGraduated !== undefined) updateData.yearGraduated = yearGraduated;
+  if (prefectName !== undefined) updateData.prefectName = prefectName;
+
+  // If no fields to update, return current student data
+  if (Object.keys(updateData).length === 0) {
+    return res.status(200).json({
+      status: "success",
+      message: "No fields to update",
+      data: studentFound,
+    });
+  }
+
+  // Update student with all fields at once
+  const updatedStudent = await Student.findByIdAndUpdate(
+    studentId,
+    updateData,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: updatedStudent,
+    message: "Student updated successfully",
   });
 });

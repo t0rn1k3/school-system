@@ -12,6 +12,8 @@ const {
   getStudentProfileCtrl,
   getStudentsCtrl,
   getSingleStudentCtrl,
+  updateStudentProfileCtrl,
+  adminUpdateStudent,
 } = require("../../controller/students/studentsCtrl");
 
 studentRouter.post(
@@ -25,4 +27,13 @@ studentRouter.post("/login", studentLoginCtrl);
 studentRouter.get("/profile", isStudentLogin, isStudent, getStudentProfileCtrl);
 studentRouter.get("/admin", isLogin, isAdmin, getStudentsCtrl);
 studentRouter.get("/:studentId/admin", isLogin, isAdmin, getSingleStudentCtrl);
+// Student updates own profile
+studentRouter.put(
+  "/profile",
+  isStudentLogin,
+  isStudent,
+  updateStudentProfileCtrl,
+);
+// Admin updates specific student
+studentRouter.put("/:studentId/admin", isLogin, isAdmin, adminUpdateStudent);
 module.exports = studentRouter;

@@ -26,16 +26,8 @@ teacherRouter.post("/login", teacherLoginCtrl);
 teacherRouter.get("/admin", isLogin, isAdmin, getTeachersCtrl);
 teacherRouter.get("/profile", isTeacherLogin, isTeacher, getTeacherProfileCtrl);
 teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, getSingleTeacherCtrl);
-teacherRouter.put(
-  "/:teacherId/update",
-  isTeacherLogin,
-  isTeacher,
-  updateTeacherProfileCtrl,
-);
-teacherRouter.put(
-  "/:teacherId/update/admin",
-  isLogin,
-  isAdmin,
-  adminUpdateTeacher,
-);
+// Teacher updates own profile
+teacherRouter.put("/profile", isTeacherLogin, isTeacher, updateTeacherProfileCtrl);
+// Admin updates specific teacher
+teacherRouter.put("/:teacherId", isLogin, isAdmin, adminUpdateTeacher);
 module.exports = teacherRouter;
