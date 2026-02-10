@@ -89,3 +89,41 @@ exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
     });
   }
 });
+
+//@dec student profile
+//@route GET /api/v1/students/profile
+//@access Private students only
+
+exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
+  const student = await Student.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  }).select("-password -createdAt -updatedAt");
+  if (!student) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    data: student,
+    message: "Student profile fetched successfully",
+  });
+});
+
+//@dec get all students
+//@route GET /api/v1/students/
+//@access Private admins only
+
+exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
+  // Only fetch non-deleted students (handle documents without isDeleted field)
+  const students = await Student.find({
+    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+  });
+  res.status(200).json({
+    status: "success",
+    data: students,
+    message: "All students fetched successfully",
+  });
+});
