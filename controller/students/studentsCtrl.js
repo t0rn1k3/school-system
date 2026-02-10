@@ -127,3 +127,26 @@ exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
     message: "All students fetched successfully",
   });
 });
+
+//@dec get single student
+//@route GET /api/v1/students/:studentId/admin
+//@access Private admins only
+
+exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
+  const studentId = req.params.studentId;
+  const student = await Student.findOne({
+    _id: studentId,
+    isDeleted: { $ne: true },
+  });
+  if (!student) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    data: student,
+    message: "Student fetched successfully",
+  });
+});
