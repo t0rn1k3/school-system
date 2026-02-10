@@ -14,7 +14,7 @@ const YearGroupRouter = require("../routes/academics/yearGroupsRouter");
 const adminRouter = require("../routes/staff/adminRouter");
 const teacherRouter = require("../routes/staff/teacherRoute");
 const examRouter = require("../routes/academics/examRoute");
-const studentRouter = require("../routes/staff/studentRoute");
+const studentRouter = require("../routes/students/studentRoute");
 
 const app = express();
 

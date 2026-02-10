@@ -8,6 +8,7 @@ const isTeacherLogin = require("../../middlewares/isTeacherLogin");
 const isTeacher = require("../../middlewares/isTeacher");
 const {
   adminRegisterStudentCtrl,
+  studentLoginCtrl,
 } = require("../../controller/students/studentsCtrl");
 
 studentRouter.post(
@@ -16,5 +17,7 @@ studentRouter.post(
   isAdmin,
   adminRegisterStudentCtrl,
 );
+
+studentRouter.post("/login", studentLoginCtrl);
 
 module.exports = studentRouter;
