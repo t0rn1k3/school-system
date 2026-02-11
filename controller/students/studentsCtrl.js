@@ -397,3 +397,11 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     message: "Student updated successfully",
   });
 });
+
+//@dec student write exam
+//@route POST /api/v1/students/exams/:examId
+//@access Private students only
+
+exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
+  res.json("Taking");
+});

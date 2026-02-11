@@ -80,3 +80,38 @@ exports.getQuestion = AsyncHandler(async (req, res) => {
     data: question,
   });
 });
+
+//@desc Update question
+//@route PUT /api/v1/questions/:id
+//@access Private teachers only
+exports.updateQuestion = AsyncHandler(async (req, res) => {
+  const { question, optionA, optionB, optionC, optionD, correctAnswer } =
+    req.body;
+
+  // Build update object with only provided fields (partial update)
+  const updateData = {};
+  if (question !== undefined) updateData.question = question;
+  if (optionA !== undefined) updateData.optionA = optionA;
+  if (optionB !== undefined) updateData.optionB = optionB;
+  if (optionC !== undefined) updateData.optionC = optionC;
+  if (optionD !== undefined) updateData.optionD = optionD;
+  if (correctAnswer !== undefined) updateData.correctAnswer = correctAnswer;
+
+  const questionFound = await Question.findOneAndUpdate(
+    { _id: req.params.id, isDeleted: { $ne: true } },
+    updateData,
+    { new: true, runValidators: true },
+  );
+  if (!questionFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Question not found",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Question updated successfully",
+    data: questionFound,
+  });
+});
