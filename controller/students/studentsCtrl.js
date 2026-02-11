@@ -433,9 +433,21 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  //get student answers
+  const studentAnswers = req.body.answers;
+  if (!studentAnswers) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student answers not found",
+    });
+  }
+
+  console.log(studentAnswers);
+
   res.status(200).json({
     status: "success",
     data: questions,
-    message: "Exam questions fetched successfully",
+    studentAnswers,
+    message: "Exam taken successfully",
   });
 });
