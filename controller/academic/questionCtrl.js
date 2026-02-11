@@ -1,12 +1,9 @@
 const AsyncHandler = require("express-async-handler");
 const Question = require("../../model/Academic/Question");
 const Exam = require("../../model/Academic/Exam");
-const Teacher = require("../../model/Staff/Teacher");
-const isTeacherLogin = require("../../middlewares/isTeacherLogin");
-const isTeacher = require("../../middlewares/isTeacher");
 
 //@desc Create question
-//@route POST /api/v1/:examId/questions
+//@route POST /api/v1/questions/:examId
 //@access Private teachers only
 
 exports.createQuestion = AsyncHandler(async (req, res) => {
