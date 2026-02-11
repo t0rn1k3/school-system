@@ -3,6 +3,7 @@ const Student = require("../../model/Academic/Student");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
 const bcrypt = require("bcryptjs");
+const Exam = require("../../model/Academic/Exam");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -403,5 +404,38 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
-  res.json("Taking");
+  // get student
+  const studentFound = await Student.findById(req.userAuth?._id);
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found or deleted",
+    });
+  }
+
+  // get exam
+  const examFound = await Exam.findById(req.params.examId).populate(
+    "questions",
+  );
+  if (!examFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam not found",
+    });
+  }
+
+  //get quetions
+  const questions = examFound?.questions;
+  if (!questions) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Questions not found",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: questions,
+    message: "Exam questions fetched successfully",
+  });
 });
