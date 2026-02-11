@@ -442,12 +442,34 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  console.log(studentAnswers);
+  // Build result object
+  let correctAnswers = 0;
+  let wrongAnswers = 0;
+  let totalQuestions = questions.length;
+  let grade = 0;
+  let score = 0;
+  let answeredCorrectly = [];
+
+  // check for answers
+
+  for (let i = 0; i < questions.length; i++) {
+    // find the question
+    const question = questions[i];
+    //check if the answer is correct
+    if (question.correctAnswer === studentAnswers[i]) {
+      correctAnswers++;
+      score += question.score;
+      question.isCorrect = true;
+    } else {
+      wrongAnswers++;
+    }
+  }
 
   res.status(200).json({
     status: "success",
-    data: questions,
-    studentAnswers,
+    correctAnswers,
+    wrongAnswers,
+    score,
     message: "Exam taken successfully",
   });
 });
