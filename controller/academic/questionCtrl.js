@@ -21,6 +21,19 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     });
   }
 
+  // check if question already exists
+
+  const questionExists = await Question.findOne({
+    question,
+    isDeleted: { $ne: true },
+  });
+  if (questionExists) {
+    return res.status(409).json({
+      status: "failed",
+      message: "Question already exists",
+    });
+  }
+
   //create question
 
   const questionCreated = await Question.create({
