@@ -145,6 +145,11 @@ exports.getExams = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted exams (handle documents without isDeleted field)
   const exams = await Exam.find({
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+  }).populate({
+    path: "questions",
+    populate: {
+      path: "createdBy",
+    },
   });
   res.status(200).json({
     status: "success",
