@@ -442,6 +442,14 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  // check if student asnwered all questions
+  if (studentAnswers.length !== questions.length) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Please answer all questions",
+    });
+  }
+
   // Build result object
   let correctAnswers = 0;
   let wrongAnswers = 0;
