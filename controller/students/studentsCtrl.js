@@ -454,6 +454,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   let correctAnswers = 0;
   let wrongAnswers = 0;
   let totalQuestions = questions.length;
+  let status = ""; // failed/passed
   let grade = 0;
   let score = 0;
   let answeredQuestions = [];
@@ -472,6 +473,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
       wrongAnswers++;
     }
   }
+
   //calculate reports
 
   grade = (score / totalQuestions) * 100;
@@ -483,6 +485,13 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     };
   });
 
+  //calculate status
+  if (grade >= 50) {
+    status = "passed";
+  } else {
+    status = "failed";
+  }
+
   res.status(200).json({
     status: "success",
     correctAnswers,
@@ -490,6 +499,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     score,
     grade,
     answeredQuestions,
+    status,
     message: "Exam taken successfully",
   });
 });
