@@ -42,15 +42,11 @@ const examResultSchema = new Schema(
       enum: ["Excellent", "Good", "Poor"],
       default: "Poor",
     },
-    position: {
-      type: Number,
-      required: true,
-    },
+    // position: {
+    //   type: Number,
+    //   required: true,
+    // },
 
-    subject: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Subject",
-    },
     classLevel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ClassLevel",

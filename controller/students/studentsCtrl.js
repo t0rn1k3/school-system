@@ -4,6 +4,7 @@ const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
 const bcrypt = require("bcryptjs");
 const Exam = require("../../model/Academic/Exam");
+const ExamResult = require("../../model/Academic/ExamResults");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -505,6 +506,24 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     remarks = "Poor";
   }
 
+  // Generate exam result
+  const examResult = await ExamResult.create({
+    student: studentFound._id,
+    exam: examFound?._id,
+    score,
+    grade,
+    answeredQuestions,
+    status,
+    remarks,
+    classLevel: examFound?.classLevel,
+    academicYear: examFound?.academicYear,
+    academicTerm: examFound?.academicTerm,
+  });
+
+  //push the exam result
+  studentFound.examResults.push(examResult._id);
+  await studentFound.save();
+
   res.status(200).json({
     status: "success",
     correctAnswers,
@@ -514,6 +533,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     answeredQuestions,
     status,
     remarks,
+    examResult,
     message: "Exam taken successfully",
   });
 });
