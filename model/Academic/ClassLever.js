@@ -4,10 +4,14 @@ const { Schema } = mongoose;
 
 const ClassLevelSchema = new Schema(
   {
-    //level100/200/300/400
+    //level100/200/300/400 or Grade 1, Grade 2, etc.
     name: {
       type: String,
       required: true,
+    },
+    order: {
+      type: Number,
+      default: 0,
     },
     description: {
       type: String,

@@ -5,6 +5,7 @@ const generateToken = require("../../utils/generateToken");
 const bcrypt = require("bcryptjs");
 const Exam = require("../../model/Academic/Exam");
 const ExamResult = require("../../model/Academic/ExamResults");
+const Program = require("../../model/Academic/Program");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -319,13 +320,11 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     password,
     isWithdrawn,
     isSuspended,
-    isPromotedToLevel200,
-    isPromotedToLevel300,
-    isPromotedToLevel400,
     isGraduated,
     dateAdmitted,
     yearGraduated,
     prefectName,
+    currentClassLevel,
   } = req.body;
 
   // Check if student is withdrawn (only block if not explicitly un-withdrawing)
@@ -363,13 +362,9 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   }
   if (isWithdrawn !== undefined) updateData.isWithdrawn = isWithdrawn;
   if (isSuspended !== undefined) updateData.isSuspended = isSuspended;
-  if (isPromotedToLevel200 !== undefined)
-    updateData.isPromotedToLevel200 = isPromotedToLevel200;
-  if (isPromotedToLevel300 !== undefined)
-    updateData.isPromotedToLevel300 = isPromotedToLevel300;
-  if (isPromotedToLevel400 !== undefined)
-    updateData.isPromotedToLevel400 = isPromotedToLevel400;
   if (isGraduated !== undefined) updateData.isGraduated = isGraduated;
+  if (currentClassLevel !== undefined)
+    updateData.currentClassLevel = currentClassLevel;
   if (dateAdmitted !== undefined) updateData.dateAdmitted = dateAdmitted;
   if (yearGraduated !== undefined) updateData.yearGraduated = yearGraduated;
   if (prefectName !== undefined) updateData.prefectName = prefectName;
@@ -415,9 +410,9 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   }
 
   // get exam
-  const examFound = await Exam.findById(req.params.examId).populate(
-    "questions",
-  );
+  const examFound = await Exam.findById(req.params.examId)
+    .populate("questions")
+    .populate("academicTerm");
   if (!examFound) {
     return res.status(404).json({
       status: "failed",
@@ -500,9 +495,9 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 
   //calculate status
   if (grade >= 50) {
-    status = "passed";
+    status = "Passed";
   } else {
-    status = "failed";
+    status = "Failed";
   }
 
   //calculate remarks
@@ -535,6 +530,37 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   //push the exam result
   studentFound.examResults.push(examResult._id);
   await studentFound.save();
+
+  // Promote student to next level (dynamic - based on program's classLevels)
+  const shouldAttemptPromotion =
+    examFound?.academicTerm?.name === "3rd term" && status === "Passed";
+
+  if (shouldAttemptPromotion && studentFound.program) {
+    const program = await Program.findById(studentFound.program).populate(
+      "classLevels",
+    );
+    const levels = program?.classLevels || [];
+
+    if (levels.length > 0 && studentFound.currentClassLevel) {
+      const currentLevelId =
+        typeof studentFound.currentClassLevel === "object"
+          ? studentFound.currentClassLevel._id
+          : studentFound.currentClassLevel;
+      const currentIndex = levels.findIndex((l) =>
+        l._id.equals(currentLevelId),
+      );
+      const nextLevel = levels[currentIndex + 1];
+
+      if (nextLevel) {
+        studentFound.classLevels.push(nextLevel._id);
+        studentFound.currentClassLevel = nextLevel._id;
+        await studentFound.save();
+      } else if (currentIndex >= 0 && currentIndex === levels.length - 1) {
+        studentFound.isGraduated = true;
+        await studentFound.save();
+      }
+    }
+  }
 
   res.status(200).json({
     status: "success",

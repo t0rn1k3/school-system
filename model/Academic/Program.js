@@ -60,6 +60,13 @@ const ProgramSchema = new Schema(
         default: [],
       },
     ],
+    // Ordered list of class levels for this program (school-defined, e.g. Grade 1→4 or Level 100→400)
+    classLevels: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "ClassLevel",
+      },
+    ],
   },
   { timestamps: true },
 );

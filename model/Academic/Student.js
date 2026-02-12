@@ -33,19 +33,17 @@ const studentSchema = new mongoose.Schema(
       type: String,
       default: "student",
     },
-    //Classes are from level 1 to 6
-    //keep track of the class level the student is in
+    // History of class levels (ObjectIds). Order = progression path.
     classLevels: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ClassLevel",
       },
     ],
+    // Current class level (references ClassLevel document)
     currentClassLevel: {
-      type: String,
-      default: function () {
-        return this.classLevels[this.classLevels.length - 1];
-      },
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ClassLevel",
     },
     academicYear: {
       type: mongoose.Schema.Types.ObjectId,
@@ -68,18 +66,6 @@ const studentSchema = new mongoose.Schema(
       ref: "Program",
     },
 
-    isPromotedToLevel200: {
-      type: Boolean,
-      default: false,
-    },
-    isPromotedToLevel300: {
-      type: Boolean,
-      default: false,
-    },
-    isPromotedToLevel400: {
-      type: Boolean,
-      default: false,
-    },
     isGraduated: {
       type: Boolean,
       default: false,
