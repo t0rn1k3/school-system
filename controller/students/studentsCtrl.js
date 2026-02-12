@@ -492,6 +492,19 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     status = "failed";
   }
 
+  //calculate remarks
+  if (grade >= 80) {
+    remarks = "Excellent";
+  } else if (grade >= 70) {
+    remarks = "Very Good";
+  } else if (grade >= 60) {
+    remarks = "Good";
+  } else if (grade >= 50) {
+    remarks = "Average";
+  } else {
+    remarks = "Poor";
+  }
+
   res.status(200).json({
     status: "success",
     correctAnswers,
@@ -500,6 +513,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     grade,
     answeredQuestions,
     status,
+    remarks,
     message: "Exam taken successfully",
   });
 });
