@@ -451,6 +451,18 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  // check if student has already taken the exam
+  const studentFoundInResults = await ExamResult.findOne({
+    student: studentFound?._id,
+    exam: examFound?._id,
+  });
+  if (studentFoundInResults) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You have already taken this exam",
+    });
+  }
+
   // Build result object
   let correctAnswers = 0;
   let wrongAnswers = 0;
