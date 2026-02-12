@@ -456,7 +456,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   let totalQuestions = questions.length;
   let grade = 0;
   let score = 0;
-  let answeredCorrectly = [];
+  let answeredQuestions = [];
 
   // check for answers
 
@@ -466,18 +466,30 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     //check if the answer is correct
     if (question.correctAnswer === studentAnswers[i]) {
       correctAnswers++;
-      score += question.score;
+      score++;
       question.isCorrect = true;
     } else {
       wrongAnswers++;
     }
   }
+  //calculate reports
+
+  grade = (score / totalQuestions) * 100;
+  answeredQuestions = questions.map((question) => {
+    return {
+      question: question.question,
+      correctAnswer: question.correctAnswer,
+      isCorrect: question.isCorrect,
+    };
+  });
 
   res.status(200).json({
     status: "success",
     correctAnswers,
     wrongAnswers,
     score,
+    grade,
+    answeredQuestions,
     message: "Exam taken successfully",
   });
 });
