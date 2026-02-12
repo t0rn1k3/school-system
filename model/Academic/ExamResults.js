@@ -39,13 +39,9 @@ const examResultSchema = new Schema(
     remarks: {
       type: String,
       required: true,
-      enum: ["Excellent", "Good", "Poor"],
+      enum: ["Excellent", "Very Good", "Good", "Average", "Poor"],
       default: "Poor",
     },
-    // position: {
-    //   type: Number,
-    //   required: true,
-    // },
 
     classLevel: {
       type: mongoose.Schema.Types.ObjectId,

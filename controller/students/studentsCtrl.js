@@ -458,6 +458,15 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  // check is student is suspended
+
+  if (studentFound?.isSuspended || studentFound?.isWithdrawn) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You are suspended or withdrawn",
+    });
+  }
+
   // Build result object
   let correctAnswers = 0;
   let wrongAnswers = 0;
@@ -564,14 +573,6 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 
   res.status(200).json({
     status: "success",
-    correctAnswers,
-    wrongAnswers,
-    score,
-    grade,
-    answeredQuestions,
-    status,
-    remarks,
-    examResult,
-    message: "Exam taken successfully",
+    data: "you have submitted your exam successfully, you can now view your result in the result section",
   });
 });
