@@ -16,6 +16,7 @@ const teacherRouter = require("../routes/staff/teacherRoute");
 const examRouter = require("../routes/academics/examRoute");
 const studentRouter = require("../routes/students/studentRoute");
 const questionRouter = require("../routes/academics/questionRoute");
+const examResultRouter = require("../routes/academics/examResultRoute");
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use("/api/v1/teachers", teacherRouter);
 app.use("/api/v1/students", studentRouter);
 app.use("/api/v1/exams", examRouter);
 app.use("/api/v1/questions", questionRouter);
+app.use("/api/v1/exam-results", examResultRouter);
 // Error Handler
 app.use(pageNotFound);
 

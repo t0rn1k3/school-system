@@ -522,18 +522,33 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     remarks = "Poor";
   }
 
+  // Ensure exam has required refs for ExamResult
+  const academicTermId =
+    examFound?.academicTerm?._id ?? examFound?.academicTerm;
+  const academicYearId =
+    examFound?.academicYear?._id ?? examFound?.academicYear;
+  const classLevelId = examFound?.classLevel?._id ?? examFound?.classLevel;
+
+  if (!academicTermId || !academicYearId) {
+    return res.status(400).json({
+      status: "failed",
+      message:
+        "Exam is missing academicTerm or academicYear. Please update the exam with these fields.",
+    });
+  }
+
   // Generate exam result
   const examResult = await ExamResult.create({
     student: studentFound._id,
-    exam: examFound?._id,
+    exam: examFound._id,
     score,
     grade,
     answeredQuestions,
     status,
     remarks,
-    classLevel: examFound?.classLevel,
-    academicYear: examFound?.academicYear,
-    academicTerm: examFound?.academicTerm,
+    classLevel: classLevelId,
+    academicYear: academicYearId,
+    academicTerm: academicTermId,
   });
 
   //push the exam result
