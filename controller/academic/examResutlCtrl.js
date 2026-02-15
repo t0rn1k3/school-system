@@ -31,10 +31,12 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("academicYear");
 
   if (!examResult) {
+    // Find by exam ID - return most recent attempt (student may have taken it multiple times)
     examResult = await ExamResult.findOne({
       studentId: studentFound.studentId,
       exam: id,
     })
+      .sort({ createdAt: -1 })
       .populate({
         path: "exam",
         populate: {
@@ -59,7 +61,6 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     status: "success",
     message: "Exam result checked successfully",
     data: examResult,
-    student: studentFound,
   });
 });
 

@@ -447,16 +447,16 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   }
 
   // check if student has already taken the exam
-  const studentFoundInResults = await ExamResult.findOne({
-    student: studentFound?._id,
-    exam: examFound?._id,
-  });
-  if (studentFoundInResults) {
-    return res.status(400).json({
-      status: "failed",
-      message: "You have already taken this exam",
-    });
-  }
+  // const studentFoundInResults = await ExamResult.findOne({
+  //   student: studentFound?._id,
+  //   exam: examFound?._id,
+  // });
+  // if (studentFoundInResults) {
+  //   return res.status(400).json({
+  //     status: "failed",
+  //     message: "You have already taken this exam",
+  //   });
+  // }
 
   // check is student is suspended
 
@@ -479,28 +479,22 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   // check for answers
 
   for (let i = 0; i < questions.length; i++) {
-    // find the question
     const question = questions[i];
-    //check if the answer is correct
-    if (question.correctAnswer === studentAnswers[i]) {
+    const studentAnswer = studentAnswers[i];
+    const isCorrect = question.correctAnswer === studentAnswer;
+    if (isCorrect) {
       correctAnswers++;
       score++;
-      question.isCorrect = true;
-    } else {
-      wrongAnswers++;
     }
-  }
-
-  //calculate reports
-
-  grade = (score / totalQuestions) * 100;
-  answeredQuestions = questions.map((question) => {
-    return {
+    answeredQuestions.push({
       question: question.question,
       correctAnswer: question.correctAnswer,
-      isCorrect: question.isCorrect,
-    };
-  });
+      studentAnswer: studentAnswer,
+      isCorrect: isCorrect,
+    });
+  }
+
+  grade = (score / totalQuestions) * 100;
 
   //calculate status
   if (grade >= 50) {

@@ -41,6 +41,14 @@ const examResultSchema = new Schema(
       enum: ["Excellent", "Very Good", "Good", "Average", "Poor"],
       default: "Poor",
     },
+    answeredQuestions: [
+      {
+        question: { type: String },
+        correctAnswer: { type: String },
+        studentAnswer: { type: String },
+        isCorrect: { type: Boolean },
+      },
+    ],
 
     classLevel: {
       type: mongoose.Schema.Types.ObjectId,
