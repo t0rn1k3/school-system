@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const morgan = require("morgan");
 const {
   globalErrorHandler,
@@ -21,6 +22,7 @@ const examResultRouter = require("../routes/academics/examResultRoute");
 const app = express();
 
 //===Middlewares===
+app.use(cors());
 // Parse JSON - Express 5 compatible (handles missing Content-Type header)
 app.use(
   express.json({
