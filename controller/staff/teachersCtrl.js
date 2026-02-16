@@ -109,6 +109,11 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
+  const filter = { isDeleted: { $ne: true } };
+  if (req.query.name && typeof req.query.name === "string") {
+    filter.name = { $regex: req.query.name, $options: "i" };
+  }
+  const TeacherQuery = Teacher.find(filter);
   //convert query strings to numbers
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
@@ -137,11 +142,7 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
     };
   }
   // Only fetch non-deleted teachers (handle documents without isDeleted field)
-  const teachers = await Teacher.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  })
-    .skip(skip)
-    .limit(limit);
+  const teachers = await TeacherQuery.skip(skip).limit(limit);
 
   res.status(200).json({
     totalTeachers,
