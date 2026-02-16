@@ -22,7 +22,14 @@ const examResultRouter = require("../routes/academics/examResultRoute");
 const app = express();
 
 //===Middlewares===
-app.use(cors());
+// CORS: allow frontend origin from env (dev/prod)
+const frontendOrigin = process.env.FRONTEND_URL || "http://localhost:3000";
+app.use(
+  cors({
+    origin: frontendOrigin,
+    credentials: true,
+  })
+);
 // Parse JSON - Express 5 compatible (handles missing Content-Type header)
 app.use(
   express.json({
