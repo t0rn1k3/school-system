@@ -113,6 +113,29 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
   const skip = (page - 1) * limit;
+  //get total number of teachers
+  const totalTeachers = await Teacher.countDocuments({
+    isDeleted: { $ne: true },
+  });
+
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  // pagination results
+  const pagination = {};
+
+  if (endIndex < totalTeachers) {
+    pagination.next = {
+      page: page + 1,
+      limit: limit,
+    };
+  }
+  if (startIndex > 0) {
+    pagination.previous = {
+      page: page - 1,
+      limit: limit,
+    };
+  }
   // Only fetch non-deleted teachers (handle documents without isDeleted field)
   const teachers = await Teacher.find({
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
@@ -120,14 +143,11 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  //get total number of teachers
-  const totalTeachers = await Teacher.countDocuments({
-    isDeleted: { $ne: true },
-  });
   res.status(200).json({
+    totalTeachers,
+    pagination,
     status: "success",
     data: teachers,
-    totalTeachers,
     results: teachers.length,
     message: "All teachers fetched successfully",
   });
