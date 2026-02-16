@@ -1,6 +1,7 @@
 const AsyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const Teacher = require("../../model/Staff/Teacher");
+const Admin = require("../../model/Staff/Admin");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
 
@@ -26,6 +27,14 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
       message: "Name, email, and password are required fields",
     });
   }
+  // find admin
+  const adminFound = await Admin.findById(req.userAuth._id);
+  if (!adminFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Admin not found",
+    });
+  }
 
   //check if the teacher already exists
   const teacher = await Teacher.findOne({
@@ -48,6 +57,10 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
     email: email.toLowerCase().trim(),
     password: hashedPassword,
   });
+
+  //push to the admin
+  adminFound.teachers.push(teacherCreated._id);
+  await adminFound.save();
 
   // send teacher data
 

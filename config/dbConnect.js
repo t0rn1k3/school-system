@@ -6,9 +6,9 @@ const dbConnect = async () => {
       throw new Error("MONGO_URL is not defined in environment variables");
     }
 
-    // Connection options for better reliability
+    // Connection options for better reliability (especially for slow connections)
     const options = {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 30
+      serverSelectionTimeoutMS: 30000, // Wait up to 30 seconds before timing out
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
     };
 
@@ -31,7 +31,18 @@ const dbConnect = async () => {
     console.error("DB Connection Failed:", error.message);
 
     // Provide helpful error messages for common issues
-    if (error.message.includes("whitelist") || error.message.includes("IP")) {
+    if (error.message.includes("timed out")) {
+      console.error("\n⚠️  Connection Timeout!");
+      console.error(
+        "Possible causes: slow internet, firewall blocking port 27017, or network issues.",
+      );
+      console.error(
+        "Try: switch to mobile hotspot, check firewall/antivirus, or retry when connection is stable.",
+      );
+    } else if (
+      error.message.includes("whitelist") ||
+      error.message.includes("IP")
+    ) {
       console.error("\n⚠️  IP Whitelist Issue Detected!");
       console.error("To fix this:");
       console.error("1. Go to MongoDB Atlas Dashboard");

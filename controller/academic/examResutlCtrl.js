@@ -56,7 +56,14 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Students can always see their own result (published or not)
+  if (!examResult.isPublished) {
+    return res.status(403).json({
+      status: "failed",
+      message:
+        "Exam result not published yet. Please wait for your teacher to publish it.",
+    });
+  }
+
   res.status(200).json({
     status: "success",
     message: "Exam result checked successfully",
@@ -69,10 +76,46 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
-  const results = await ExamResult.find();
+  const results = await ExamResult.find().select("exam");
   res.status(200).json({
     status: "success",
     message: "Exam results fetched successfully",
     data: results,
+  });
+});
+
+//@desc admin publish exam result
+//@route PUT /api/v1/admins/publish/exam-result/:id
+//@access Private admins only
+
+exports.adminToggleExamResult = AsyncHandler(async (req, res) => {
+  // find the exam result
+  const examResult = await ExamResult.findById(req.params.id);
+  if (!examResult) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam result not found",
+    });
+  }
+
+  const publishResult = await ExamResult.findByIdAndUpdate(
+    req.params.id,
+    {
+      isPublished: req.body.publish,
+    },
+    {
+      new: true,
+    },
+  );
+  if (!publishResult) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam result not published",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    message: "Exam result published successfully",
+    data: publishResult,
   });
 });

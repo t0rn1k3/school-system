@@ -97,18 +97,11 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
     isDeleted: false,
   })
     .select("-password -createdAt -updatedAt")
-    .populate("academicYears");
-  if (!admin) {
-    return res.status(404).json({
-      status: "failed",
-      message: "Admin not found",
-    });
-  }
-  res.status(200).json({
-    status: "success",
-    data: admin,
-    message: "Admin profile fetched successfully",
-  });
+    .populate("academicYears")
+    .populate("academicTerms")
+    .populate("programs")
+    .populate("yearGroups")
+    .populate("classLevels");
 });
 
 //@desc update admin
