@@ -71,12 +71,47 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
   });
 });
 
-//@desc get all exam results
+//@desc admin get all exam results
+//@route GET /api/v1/admins/exam-results
+//@access Private admins only
+
+exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
+  const results = await ExamResult.find({})
+    .populate("exam")
+    .populate("classLevel")
+    .populate("academicTerm")
+    .populate("academicYear")
+    .sort({ createdAt: -1 });
+  res.status(200).json({
+    status: "success",
+    message: "Exam results fetched successfully",
+    data: results,
+  });
+});
+
+//@desc get all exam results (students)
 //@route GET /api/v1/exam-results
-//@access Private
+//@access Private students only
 
 exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
-  const results = await ExamResult.find().select("exam");
+  const studentFound = await Student.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  const results = await ExamResult.find({ studentId: studentFound.studentId })
+    .populate("exam")
+    .populate("classLevel")
+    .populate("academicTerm")
+    .populate("academicYear")
+    .sort({ createdAt: -1 });
+
   res.status(200).json({
     status: "success",
     message: "Exam results fetched successfully",

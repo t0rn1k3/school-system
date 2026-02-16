@@ -102,6 +102,17 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
     .populate("programs")
     .populate("yearGroups")
     .populate("classLevels");
+  if (!admin) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Admin not found",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    message: "Admin profile fetched successfully",
+    data: admin,
+  });
 });
 
 //@desc update admin

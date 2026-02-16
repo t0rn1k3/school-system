@@ -204,15 +204,7 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
-  const teacherId = req.params.teacherId;
-
-  // Verify that the teacher can only update their own profile
-  if (teacherId !== req.userAuth._id.toString()) {
-    return res.status(403).json({
-      status: "failed",
-      message: "You can only update your own profile",
-    });
-  }
+  // Profile route: teacher updates own profile (req.userAuth from isTeacherLogin)
 
   // If body is empty or has no fields, return current user data
   if (

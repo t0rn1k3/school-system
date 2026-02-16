@@ -16,6 +16,19 @@ const {
   adminPublishExamCtrl,
   adminUnpublishExamCtrl,
 } = require("../../controller/staff/adminCtrl");
+const {
+  adminGetAllExamResultsCtrl,
+} = require("../../controller/academic/examResutlCtrl");
+const {
+  getExams,
+  getExam,
+} = require("../../controller/academic/examsCtrl");
+const {
+  createQuestion,
+  getQuestions,
+  getQuestion,
+  updateQuestion,
+} = require("../../controller/academic/questionCtrl");
 const isLogin = require("../../middlewares/isLogin");
 const isAdmin = require("../../middlewares/isAdmin");
 //register
@@ -33,6 +46,16 @@ adminRouter.get("/", isLogin, getAdminsCtrl);
 //get single
 
 adminRouter.get("/profile", isLogin, isAdmin, getAdminProfileCtrl);
+
+adminRouter.get("/exam-results", isLogin, isAdmin, adminGetAllExamResultsCtrl);
+
+adminRouter.get("/exams", isLogin, isAdmin, getExams);
+adminRouter.get("/exams/:id", isLogin, isAdmin, getExam);
+
+adminRouter.get("/questions", isLogin, isAdmin, getQuestions);
+adminRouter.get("/questions/:id", isLogin, isAdmin, getQuestion);
+adminRouter.post("/questions/:examId", isLogin, isAdmin, createQuestion);
+adminRouter.put("/questions/:id", isLogin, isAdmin, updateQuestion);
 
 //update
 

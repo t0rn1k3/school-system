@@ -140,12 +140,14 @@ exports.createExam = AsyncHandler(async (req, res) => {
 
 //@desc Get all exams
 //@route GET /api/v1/exams
-//@access Private
+//@access Private (teachers see own exams; admin via /admins/exams sees all)
 exports.getExams = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted exams (handle documents without isDeleted field)
-  const exams = await Exam.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  }).populate({
+  const filter = { isDeleted: { $ne: true } };
+  // When called by teacher (isTeacherLogin), filter to their exams only
+  if (req.userAuth && req.userAuth.role === "teacher") {
+    filter.createdBy = req.userAuth._id;
+  }
+  const exams = await Exam.find(filter).populate({
     path: "questions",
     populate: {
       path: "createdBy",
@@ -162,10 +164,11 @@ exports.getExams = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/exams/:id
 //@access Private
 exports.getExam = AsyncHandler(async (req, res) => {
-  const exam = await Exam.findOne({
-    _id: req.params.id,
-    isDeleted: { $ne: true }, // Ignore soft-deleted exams
-  });
+  const filter = { _id: req.params.id, isDeleted: { $ne: true } };
+  if (req.userAuth && req.userAuth.role === "teacher") {
+    filter.createdBy = req.userAuth._id;
+  }
+  const exam = await Exam.findOne(filter).populate("questions");
 
   if (!exam) {
     return res.status(404).json({
@@ -269,11 +272,15 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (classLevel !== undefined) updateData.classLevel = classLevel;
   // Don't update createdBy on update
 
+  const updateFilter = {
+    _id: req.params.id,
+    isDeleted: { $ne: true }, // Ignore soft-deleted exams
+  };
+  if (req.userAuth && req.userAuth.role === "teacher") {
+    updateFilter.createdBy = req.userAuth._id;
+  }
   const examUploaded = await Exam.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      isDeleted: { $ne: true }, // Ignore soft-deleted exams
-    },
+    updateFilter,
     updateData,
     {
       new: true,

@@ -143,20 +143,15 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
   const currentExamResult =
     examResults.length > 0 ? examResults[examResults.length - 1] : null;
 
-  // check if exam result is published
+  // Only include currentExamResult if published; always return profile
   const isPublished = currentExamResult?.isPublished;
-  if (!isPublished) {
-    return res.status(404).json({
-      status: "failed",
-      message: "Exam result not published yet",
-    });
-  }
+  const currentExamResultData = isPublished ? currentExamResult : null;
 
   res.status(200).json({
     status: "success",
     data: {
       studentProfile,
-      currentExamResult: isPublished ? currentExamResult : [],
+      currentExamResult: currentExamResultData,
     },
     message: "Student profile fetched successfully",
   });
@@ -206,16 +201,7 @@ exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only (for profile) or Private admin only (for :studentId)
 
 exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
-  const studentId = req.params.studentId;
-
-  // Verify that the student can only update their own profile
-  if (studentId !== req.userAuth._id.toString()) {
-    return res.status(403).json({
-      status: "failed",
-      message: "You can only update your own profile",
-    });
-  }
-
+  // Route is PUT /profile (no params) - student updates own profile via req.userAuth
   // If body is empty or has no fields, return current user data
   if (
     !req.body ||
@@ -441,6 +427,100 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   });
 });
 
+//@dec student list available exams
+//@route GET /api/v1/students/exams
+//@access Private students only
+
+exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
+  const studentFound = await Student.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  }).select("currentClassLevel academicYear");
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  const filter = { isDeleted: { $ne: true } };
+  if (studentFound.currentClassLevel) {
+    filter.classLevel = studentFound.currentClassLevel;
+  }
+  if (studentFound.academicYear) {
+    filter.academicYear = studentFound.academicYear;
+  }
+
+  const exams = await Exam.find(filter)
+    .populate("questions")
+    .populate("subject")
+    .populate("classLevel")
+    .populate("academicTerm")
+    .populate("academicYear")
+    .sort({ examDate: -1 });
+
+  res.status(200).json({
+    status: "success",
+    message: "Exams fetched successfully",
+    data: exams,
+  });
+});
+
+//@dec student get single exam (for taking)
+//@route GET /api/v1/students/exams/:examId
+//@access Private students only
+
+exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
+  const studentFound = await Student.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  const exam = await Exam.findById(req.params.examId)
+    .populate("questions")
+    .populate("subject")
+    .populate("classLevel")
+    .populate("academicTerm")
+    .populate("academicYear");
+  if (!exam || exam.isDeleted) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam not found",
+    });
+  }
+
+  // Check if already taken
+  const alreadyTaken = await ExamResult.findOne({
+    studentId: studentFound.studentId,
+    exam: exam._id,
+  });
+  if (alreadyTaken) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You have already taken this exam",
+    });
+  }
+
+  if (studentFound.isSuspended || studentFound.isWithdrawn) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You are suspended or withdrawn",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Exam fetched successfully",
+    data: exam,
+  });
+});
+
 //@dec student write exam
 //@route POST /api/v1/students/exams/:examId
 //@access Private students only
@@ -494,7 +574,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 
   // check if student has already taken the exam
   const studentFoundInResults = await ExamResult.findOne({
-    student: studentFound?._id,
+    studentId: studentFound?.studentId,
     exam: examFound?._id,
   });
   if (studentFoundInResults) {
@@ -550,6 +630,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   }
 
   //calculate remarks
+  let remarks = "Poor";
   if (grade >= 80) {
     remarks = "Excellent";
   } else if (grade >= 70) {
