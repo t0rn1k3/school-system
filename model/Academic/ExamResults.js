@@ -27,12 +27,16 @@ const examResultSchema = new Schema(
       required: true,
       default: 50,
     },
-    //failed/Passed
+    totalMark: {
+      type: Number,
+      default: 100,
+    },
+    // Failed/Passed/Pending (Pending = open-ended questions awaiting teacher grading)
     status: {
       type: String,
       required: true,
-      enum: ["Failed", "Passed"],
-      default: "Failed",
+      enum: ["Failed", "Passed", "Pending"],
+      default: "Pending",
     },
     //Excellent/Good/Poor
     remarks: {
@@ -44,11 +48,18 @@ const examResultSchema = new Schema(
     answeredQuestions: [
       {
         question: { type: String },
+        questionId: { type: Schema.Types.ObjectId, ref: "Question" },
         correctAnswer: { type: String },
         studentAnswer: { type: String },
-        isCorrect: { type: Boolean },
+        isCorrect: { type: Boolean }, // null for open-ended until teacher grades
+        questionType: { type: String, enum: ["multiple-choice", "open-ended"] },
+        mark: { type: Number, default: 1 }, // max points for this question
+        pointsAwarded: { type: Number, default: 0 }, // teacher-assigned points for open-ended
+        needsManualGrading: { type: Boolean, default: false },
       },
     ],
+    // true when all questions (including open-ended) are graded
+    isFullyGraded: { type: Boolean, default: false },
 
     classLevel: {
       type: mongoose.Schema.Types.ObjectId,
@@ -66,7 +77,7 @@ const examResultSchema = new Schema(
     },
     isPublished: {
       type: Boolean,
-      default: true,
+      default: false,
     },
   },
   {

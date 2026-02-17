@@ -594,61 +594,71 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   }
 
   // Build result object
-  let correctAnswers = 0;
-  let wrongAnswers = 0;
-  let totalQuestions = questions.length;
-  let status = ""; // failed/passed
-  let grade = 0;
+  const passMark = examFound.passMark ?? 50;
+  const totalMark = questions.reduce((sum, q) => sum + (q.mark || 1), 0);
   let score = 0;
-  let answeredQuestions = [];
-
-  // check for answers
+  const answeredQuestions = [];
+  let hasOpenEnded = false;
 
   for (let i = 0; i < questions.length; i++) {
     const question = questions[i];
-    const studentAnswer = studentAnswers[i];
-    const isCorrect = question.correctAnswer === studentAnswer;
-    if (isCorrect) {
-      correctAnswers++;
-      score++;
+    const studentAnswer = studentAnswers[i] ?? "";
+    const qType = question.questionType || "multiple-choice";
+    const qMark = question.mark || 1;
+
+    if (qType === "open-ended") {
+      hasOpenEnded = true;
+      answeredQuestions.push({
+        question: question.question,
+        questionId: question._id,
+        correctAnswer: question.correctAnswer || "",
+        studentAnswer: String(studentAnswer),
+        isCorrect: null,
+        questionType: "open-ended",
+        mark: qMark,
+        pointsAwarded: 0,
+        needsManualGrading: true,
+      });
+    } else {
+      const isCorrect =
+        String(question.correctAnswer).toUpperCase() ===
+        String(studentAnswer).toUpperCase();
+      if (isCorrect) score += qMark;
+      answeredQuestions.push({
+        question: question.question,
+        questionId: question._id,
+        correctAnswer: question.correctAnswer,
+        studentAnswer: String(studentAnswer),
+        isCorrect,
+        questionType: "multiple-choice",
+        mark: qMark,
+        pointsAwarded: isCorrect ? qMark : 0,
+        needsManualGrading: false,
+      });
     }
-    answeredQuestions.push({
-      question: question.question,
-      correctAnswer: question.correctAnswer,
-      studentAnswer: studentAnswer,
-      isCorrect: isCorrect,
-    });
   }
 
-  grade = (score / totalQuestions) * 100;
-
-  //calculate status
-  if (grade >= 50) {
-    status = "Passed";
-  } else {
-    status = "Failed";
+  const grade = totalMark > 0 ? (score / totalMark) * 100 : 0;
+  let status = "Pending";
+  if (!hasOpenEnded) {
+    status = grade >= passMark ? "Passed" : "Failed";
   }
 
-  //calculate remarks
   let remarks = "Poor";
-  if (grade >= 80) {
-    remarks = "Excellent";
-  } else if (grade >= 70) {
-    remarks = "Very Good";
-  } else if (grade >= 60) {
-    remarks = "Good";
-  } else if (grade >= 50) {
-    remarks = "Average";
-  } else {
-    remarks = "Poor";
+  if (status === "Passed" || grade >= 50) {
+    if (grade >= 80) remarks = "Excellent";
+    else if (grade >= 70) remarks = "Very Good";
+    else if (grade >= 60) remarks = "Good";
+    else remarks = "Average";
   }
 
-  // Generate exam result (hidden until teacher publishes)
   const examResult = await ExamResult.create({
     studentId: studentFound?.studentId,
     exam: examFound?._id,
     score,
     grade,
+    passMark,
+    totalMark,
     answeredQuestions,
     status,
     remarks,
@@ -656,15 +666,18 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     academicYear: examFound?.academicYear,
     academicTerm: examFound?.academicTerm,
     isPublished: false,
+    isFullyGraded: !hasOpenEnded,
   });
 
   //push the exam result
   studentFound.examResults.push(examResult._id);
   await studentFound.save();
 
-  // Promote student to next level (dynamic - based on program's classLevels)
+  // Promote student only when fully graded and passed (no open-ended pending)
   const shouldAttemptPromotion =
-    examFound?.academicTerm?.name === "3rd term" && status === "Passed";
+    !hasOpenEnded &&
+    status === "Passed" &&
+    examFound?.academicTerm?.name === "3rd term";
 
   if (shouldAttemptPromotion && studentFound.program) {
     const program = await Program.findById(studentFound.program).populate(

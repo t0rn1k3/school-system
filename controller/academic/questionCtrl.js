@@ -7,8 +7,16 @@ const Exam = require("../../model/Academic/Exam");
 //@access Private teachers only
 
 exports.createQuestion = AsyncHandler(async (req, res) => {
-  const { question, optionA, optionB, optionC, optionD, correctAnswer } =
-    req.body;
+  const {
+    question,
+    questionType = "multiple-choice",
+    optionA = "",
+    optionB = "",
+    optionC = "",
+    optionD = "",
+    correctAnswer = "",
+    mark = 1,
+  } = req.body;
 
   //find the exam
 
@@ -21,28 +29,35 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     });
   }
 
-  // check if question already exists
-
-  const questionExists = await Question.findOne({
-    question,
-    isDeleted: { $ne: true },
-  });
-  if (questionExists) {
-    return res.status(409).json({
-      status: "failed",
-      message: "Question already exists",
-    });
+  // For multiple-choice, validate options and correctAnswer
+  if (questionType === "multiple-choice") {
+    if (!optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+      return res.status(400).json({
+        status: "failed",
+        message:
+          "Multiple-choice questions require optionA, optionB, optionC, optionD, and correctAnswer",
+      });
+    }
+    const validAnswers = ["A", "B", "C", "D"];
+    if (!validAnswers.includes(correctAnswer.toUpperCase())) {
+      return res.status(400).json({
+        status: "failed",
+        message: "correctAnswer must be A, B, C, or D",
+      });
+    }
   }
 
   //create question
 
   const questionCreated = await Question.create({
     question,
+    questionType,
     optionA,
     optionB,
     optionC,
     optionD,
-    correctAnswer,
+    correctAnswer: correctAnswer.toUpperCase?.() || correctAnswer,
+    mark,
     createdBy: req.userAuth._id,
   });
 
@@ -85,17 +100,31 @@ exports.getQuestion = AsyncHandler(async (req, res) => {
 //@route PUT /api/v1/questions/:id
 //@access Private teachers only
 exports.updateQuestion = AsyncHandler(async (req, res) => {
-  const { question, optionA, optionB, optionC, optionD, correctAnswer } =
-    req.body;
+  const {
+    question,
+    questionType,
+    optionA,
+    optionB,
+    optionC,
+    optionD,
+    correctAnswer,
+    mark,
+  } = req.body;
 
   // Build update object with only provided fields (partial update)
   const updateData = {};
   if (question !== undefined) updateData.question = question;
+  if (questionType !== undefined) updateData.questionType = questionType;
   if (optionA !== undefined) updateData.optionA = optionA;
   if (optionB !== undefined) updateData.optionB = optionB;
   if (optionC !== undefined) updateData.optionC = optionC;
   if (optionD !== undefined) updateData.optionD = optionD;
-  if (correctAnswer !== undefined) updateData.correctAnswer = correctAnswer;
+  if (correctAnswer !== undefined)
+    updateData.correctAnswer =
+      typeof correctAnswer === "string"
+        ? correctAnswer.toUpperCase()
+        : correctAnswer;
+  if (mark !== undefined) updateData.mark = mark;
 
   const questionFound = await Question.findOneAndUpdate(
     { _id: req.params.id, isDeleted: { $ne: true } },

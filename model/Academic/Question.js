@@ -9,25 +9,22 @@ const questionSchema = new Schema(
       type: String,
       required: true,
     },
-    optionA: {
+    questionType: {
       type: String,
-      required: true,
+      enum: ["multiple-choice", "open-ended"],
+      default: "multiple-choice",
     },
-    optionB: {
-      type: String,
-      required: true,
-    },
-    optionC: {
-      type: String,
-      required: true,
-    },
-    optionD: {
-      type: String,
-      required: true,
-    },
-    correctAnswer: {
-      type: String,
-      required: true,
+    // For multiple-choice only (optional for open-ended)
+    optionA: { type: String, default: "" },
+    optionB: { type: String, default: "" },
+    optionC: { type: String, default: "" },
+    optionD: { type: String, default: "" },
+    // For MCQ: correct answer (A/B/C/D). For open-ended: model answer (optional, for teacher reference)
+    correctAnswer: { type: String, default: "" },
+    // Points for this question (used in grading)
+    mark: {
+      type: Number,
+      default: 1,
     },
     isCorrect: {
       type: Boolean,
