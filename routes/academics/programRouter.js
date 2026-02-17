@@ -9,10 +9,11 @@ const {
 const ProgramRouter = express.Router();
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
+const isTeacherOrAdmin = require("../../middlewares/isTeacherOrAdmin");
 
 ProgramRouter.post("/", isLogin, isAdmin, createProgram);
-ProgramRouter.get("/", isLogin, isAdmin, getPrograms);
-ProgramRouter.get("/:id", isLogin, isAdmin, getProgram);
+ProgramRouter.get("/", isTeacherOrAdmin, getPrograms);
+ProgramRouter.get("/:id", isTeacherOrAdmin, getProgram);
 ProgramRouter.put("/:id", isLogin, isAdmin, updateProgram);
 ProgramRouter.delete("/:id", isLogin, isAdmin, deleteProgram);
 module.exports = ProgramRouter;
