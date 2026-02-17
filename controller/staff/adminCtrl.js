@@ -1,6 +1,8 @@
 const AsyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const Admin = require("../../model/Staff/Admin");
+const Teacher = require("../../model/Staff/Teacher");
+const Student = require("../../model/Academic/Student");
 const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
@@ -287,41 +289,69 @@ exports.adminUnsupendTeacherCtrl = (req, res) => {
   }
 };
 
-//@desc withdraw teacher
+//@desc withdraw teacher (permanently deletes from database)
 //@route PUT  api/v1/admins/withdraw/teacher/:id
-//@acess Private
+//@access Private admin only
 
-exports.adminWithdrawTeacherCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: " admin withdrawed teacher",
-    });
-  } catch (error) {
-    res.json({
+exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  const teacherId = req.params.id;
+  const teacher = await Teacher.findByIdAndDelete(teacherId);
+  if (!teacher) {
+    return res.status(404).json({
       status: "failed",
-      error: error.message,
+      message: "Teacher not found",
     });
   }
-};
+  res.status(200).json({
+    status: "success",
+    message: "Teacher withdrawn and permanently deleted from database",
+    data: { id: teacherId },
+  });
+});
 
-//@desc unwithdraw teacher
+//@desc unwithdraw teacher (no longer applicable - teacher is deleted when withdrawn)
 //@route PUT  api/v1/admins/unwithdraw/teacher/:id
-//@acess Private
+//@access Private admin only
 
-exports.adminUnwithdrawTeacherCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: " admin unwithdrawed teacher",
-    });
-  } catch (error) {
-    res.json({
+exports.adminUnwithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  res.status(400).json({
+    status: "failed",
+    message:
+      "Cannot unwithdraw. Withdrawn teachers are permanently deleted. Register a new teacher if needed.",
+  });
+});
+
+//@desc withdraw student (permanently deletes from database)
+//@route PUT  api/v1/admins/withdraw/students/:id
+//@access Private admin only
+
+exports.adminWithdrawStudentCtrl = AsyncHandler(async (req, res) => {
+  const studentId = req.params.id;
+  const student = await Student.findByIdAndDelete(studentId);
+  if (!student) {
+    return res.status(404).json({
       status: "failed",
-      error: error.message,
+      message: "Student not found",
     });
   }
-};
+  res.status(200).json({
+    status: "success",
+    message: "Student withdrawn and permanently deleted from database",
+    data: { id: studentId },
+  });
+});
+
+//@desc unwithdraw student (no longer applicable - student is deleted when withdrawn)
+//@route PUT  api/v1/admins/unwithdraw/students/:id
+//@access Private admin only
+
+exports.adminUnwithdrawStudentCtrl = AsyncHandler(async (req, res) => {
+  res.status(400).json({
+    status: "failed",
+    message:
+      "Cannot unwithdraw. Withdrawn students are permanently deleted. Register a new student if needed.",
+  });
+});
 
 //@desc publish exam
 //@route PUT  api/v1/admins/publish/exam/:id

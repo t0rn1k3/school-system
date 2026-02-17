@@ -18,6 +18,7 @@ const examRouter = require("../routes/academics/examRoute");
 const studentRouter = require("../routes/students/studentRoute");
 const questionRouter = require("../routes/academics/questionRoute");
 const examResultRouter = require("../routes/academics/examResultRoute");
+const adminRouterRoutes = require("../routes/staff/adminRouter");
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.use(
   cors({
     origin: frontendOrigin,
     credentials: true,
-  })
+  }),
 );
 // Parse JSON - Express 5 compatible (handles missing Content-Type header)
 app.use(
@@ -59,6 +60,8 @@ app.use("/api/v1/students", studentRouter);
 app.use("/api/v1/exams", examRouter);
 app.use("/api/v1/questions", questionRouter);
 app.use("/api/v1/exam-results", examResultRouter);
+app.use("/api/v1/admin", adminRouterRoutes);
+
 // Error Handler
 app.use(pageNotFound);
 

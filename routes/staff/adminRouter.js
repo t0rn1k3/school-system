@@ -13,16 +13,15 @@ const {
   adminUnsupendTeacherCtrl,
   adminWithdrawTeacherCtrl,
   adminUnwithdrawTeacherCtrl,
+  adminWithdrawStudentCtrl,
+  adminUnwithdrawStudentCtrl,
   adminPublishExamCtrl,
   adminUnpublishExamCtrl,
 } = require("../../controller/staff/adminCtrl");
 const {
   adminGetAllExamResultsCtrl,
 } = require("../../controller/academic/examResutlCtrl");
-const {
-  getExams,
-  getExam,
-} = require("../../controller/academic/examsCtrl");
+const { getExams, getExam } = require("../../controller/academic/examsCtrl");
 const {
   createQuestion,
   getQuestions,
@@ -67,19 +66,47 @@ adminRouter.delete("/:id", deleteAdminCTRL);
 
 // suspend teacher
 
-adminRouter.put("/suspend/teacher/:id", adminSuspendTeacherCtrl);
+adminRouter.put("/suspend/teachers/:id", adminSuspendTeacherCtrl);
 
 //unsuspend teacher
 
-adminRouter.put("/unsuspend/teacher/:id", adminUnsupendTeacherCtrl);
+adminRouter.put("/unsuspend/teachers/:id", adminUnsupendTeacherCtrl);
 
-// withdraw teacher
+// withdraw teacher (permanently deletes from database)
 
-adminRouter.put("/withdraw/teacher/:id", adminWithdrawTeacherCtrl);
+adminRouter.put(
+  "/withdraw/teachers/:id",
+  isLogin,
+  isAdmin,
+  adminWithdrawTeacherCtrl,
+);
 
-//unwithdraw teacher
+//unwithdraw teacher (disabled - withdrawn teachers are deleted)
 
-adminRouter.put("/unwithdraw/teacher/:id", adminUnwithdrawTeacherCtrl);
+adminRouter.put(
+  "/unwithdraw/teachers/:id",
+  isLogin,
+  isAdmin,
+  adminUnwithdrawTeacherCtrl,
+);
+
+// withdraw student (permanently deletes from database)
+
+adminRouter.put(
+  "/withdraw/students/:id",
+  isLogin,
+  isAdmin,
+  adminWithdrawStudentCtrl,
+);
+
+// unwithdraw student (disabled - withdrawn students are deleted)
+
+adminRouter.put(
+  "/unwithdraw/students/:id",
+  isLogin,
+  isAdmin,
+  adminUnwithdrawStudentCtrl,
+);
 
 // publish exam
 
