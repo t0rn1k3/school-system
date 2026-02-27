@@ -118,7 +118,9 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
     isDeleted: { $ne: true },
   })
     .select("-password -createdAt -updatedAt")
-    .populate("examResults");
+    .populate("examResults")
+    .populate("program")
+    .populate("currentClassLevel");
   if (!student) {
     return res.status(404).json({
       status: "failed",

@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const dns = require("dns");
+
+dns.setDefaultResultOrder("ipv4first");
 
 const dbConnect = async () => {
   try {
@@ -8,6 +11,7 @@ const dbConnect = async () => {
 
     // Connection options for better reliability (especially for slow connections)
     const options = {
+      dbName: "lms",
       serverSelectionTimeoutMS: 30000, // Wait up to 30 seconds before timing out
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
     };
