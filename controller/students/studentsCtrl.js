@@ -5,7 +5,6 @@ const generateToken = require("../../utils/generateToken");
 const bcrypt = require("bcryptjs");
 const Exam = require("../../model/Academic/Exam");
 const ExamResult = require("../../model/Academic/ExamResults");
-const Program = require("../../model/Academic/Program");
 const Admin = require("../../model/Staff/Admin");
 
 //@desc Register student
@@ -21,7 +20,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, email, password } = req.body;
+  const { name, email, password, program, yearGroup, academicYear } = req.body;
 
   // find admin
   const adminFound = await Admin.findById(req.userAuth._id);
@@ -60,6 +59,9 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
     name,
     email: email.toLowerCase().trim(),
     password: hashedPassword,
+    ...(program && { program }),
+    ...(yearGroup && { yearGroup }),
+    ...(academicYear && { academicYear }),
   });
 
   // push to the admin
@@ -120,7 +122,8 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
     .select("-password -createdAt -updatedAt")
     .populate("examResults")
     .populate("program")
-    .populate("currentClassLevel");
+    .populate("currentClassLevel")
+    .populate("yearGroup");
   if (!student) {
     return res.status(404).json({
       status: "failed",
@@ -135,6 +138,7 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
     studentId: student?.studentId,
     program: student?.program,
     currentClassLevel: student?.currentClassLevel,
+    yearGroup: student?.yearGroup,
     dateAdmitted: student?.dateAdmitted,
     isWithdrawn: student?.isWithdrawn,
     isSuspended: student?.isSuspended,
@@ -349,6 +353,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     program,
     classLevels,
     academicYear,
+    yearGroup,
     name,
     email,
     password,
@@ -374,6 +379,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (program !== undefined) updateData.program = program;
   if (classLevels !== undefined) updateData.classLevels = classLevels;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) {
     // Check if email already exists (if email is being updated)
@@ -437,7 +443,7 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
   const studentFound = await Student.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
-  }).select("currentClassLevel academicYear");
+  }).select("currentClassLevel academicYear yearGroup");
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
@@ -446,7 +452,10 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
   }
 
   const filter = { isDeleted: { $ne: true } };
-  if (studentFound.currentClassLevel) {
+  // Vocational: filter by yearGroup; fallback to classLevel
+  if (studentFound.yearGroup) {
+    filter.yearGroup = studentFound.yearGroup;
+  } else if (studentFound.currentClassLevel) {
     filter.classLevel = studentFound.currentClassLevel;
   }
   if (studentFound.academicYear) {
@@ -457,6 +466,7 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
     .populate("questions")
     .populate("subject")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear")
     .sort({ examDate: -1 });
@@ -488,6 +498,7 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
     .populate("questions")
     .populate("subject")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear");
   if (!exam || exam.isDeleted) {
@@ -665,6 +676,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     status,
     remarks,
     classLevel: examFound?.classLevel,
+    yearGroup: examFound?.yearGroup,
     academicYear: examFound?.academicYear,
     academicTerm: examFound?.academicTerm,
     isPublished: false,
@@ -675,38 +687,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   studentFound.examResults.push(examResult._id);
   await studentFound.save();
 
-  // Promote student only when fully graded and passed (no open-ended pending)
-  const shouldAttemptPromotion =
-    !hasOpenEnded &&
-    status === "Passed" &&
-    examFound?.academicTerm?.name === "3rd term";
-
-  if (shouldAttemptPromotion && studentFound.program) {
-    const program = await Program.findById(studentFound.program).populate(
-      "classLevels",
-    );
-    const levels = program?.classLevels || [];
-
-    if (levels.length > 0 && studentFound.currentClassLevel) {
-      const currentLevelId =
-        typeof studentFound.currentClassLevel === "object"
-          ? studentFound.currentClassLevel._id
-          : studentFound.currentClassLevel;
-      const currentIndex = levels.findIndex((l) =>
-        l._id.equals(currentLevelId),
-      );
-      const nextLevel = levels[currentIndex + 1];
-
-      if (nextLevel) {
-        studentFound.classLevels.push(nextLevel._id);
-        studentFound.currentClassLevel = nextLevel._id;
-        await studentFound.save();
-      } else if (currentIndex >= 0 && currentIndex === levels.length - 1) {
-        studentFound.isGraduated = true;
-        await studentFound.save();
-      }
-    }
-  }
+  // Vocational: no class-level promotion. Graduation is manual or defined separately.
 
   res.status(200).json({
     status: "success",

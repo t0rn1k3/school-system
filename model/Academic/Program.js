@@ -14,8 +14,13 @@ const ProgramSchema = new Schema(
     },
     duration: {
       type: String,
-      required: true,
+      required: false,
       default: "4 years",
+    },
+    // Vocational: program length in weeks (e.g. 32 for Front-end Development)
+    durationWeeks: {
+      type: Number,
+      required: false,
     },
     // created automatically
     //CSFTY

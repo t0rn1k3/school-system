@@ -33,17 +33,22 @@ const studentSchema = new mongoose.Schema(
       type: String,
       default: "student",
     },
-    // History of class levels (ObjectIds). Order = progression path.
+    // History of class levels (ObjectIds). Order = progression path. Optional for vocational.
     classLevels: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ClassLevel",
       },
     ],
-    // Current class level (references ClassLevel document)
+    // Current class level. Optional for vocational (use yearGroup instead).
     currentClassLevel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ClassLevel",
+    },
+    // Group (e.g. 101, 102). Primary for vocational schools.
+    yearGroup: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "YearGroup",
     },
     academicYear: {
       type: mongoose.Schema.Types.ObjectId,

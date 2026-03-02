@@ -65,6 +65,10 @@ const examResultSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "ClassLevel",
     },
+    yearGroup: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "YearGroup",
+    },
     academicTerm: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AcademicTerm",

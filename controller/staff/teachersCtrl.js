@@ -323,7 +323,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { program, classLevel, academicYear, subject, name, email } = req.body;
+  const { program, classLevel, academicYear, yearGroup, subject, name, email } = req.body;
   const teacherId = req.params.teacherId; // Fixed: was teacherID (wrong case)
 
   // Find teacher (ignore soft-deleted)
@@ -352,6 +352,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   if (program !== undefined) updateData.program = program;
   if (classLevel !== undefined) updateData.classLevel = classLevel;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
   if (subject !== undefined) updateData.subject = subject;
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) {

@@ -15,7 +15,7 @@ exports.createProgram = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, duration, classLevels } = req.body;
+  const { name, description, duration, durationWeeks, classLevels } = req.body;
 
   // Check if name already exists (ignore soft-deleted records)
   const program = await Program.findOne({
@@ -33,6 +33,7 @@ exports.createProgram = AsyncHandler(async (req, res) => {
     name,
     description,
     ...(duration && { duration }),
+    ...(durationWeeks !== undefined && { durationWeeks }),
     ...(classLevels && Array.isArray(classLevels) && { classLevels }),
     createdBy: req.userAuth._id,
   });
@@ -100,7 +101,7 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, duration, classLevels } = req.body;
+  const { name, description, duration, durationWeeks, classLevels } = req.body;
 
   // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
@@ -122,6 +123,7 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
   if (duration !== undefined) updateData.duration = duration;
+  if (durationWeeks !== undefined) updateData.durationWeeks = durationWeeks;
   if (classLevels !== undefined && Array.isArray(classLevels))
     updateData.classLevels = classLevels;
   updateData.updatedBy = req.userAuth._id;

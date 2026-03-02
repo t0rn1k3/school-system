@@ -28,6 +28,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
   })
     .populate("exam")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear");
 
@@ -45,6 +46,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
         },
       })
       .populate("classLevel")
+      .populate("yearGroup")
       .populate("academicTerm")
       .populate("academicYear");
   }
@@ -80,6 +82,7 @@ exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
   const results = await ExamResult.find({})
     .populate("exam")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear")
     .sort({ createdAt: -1 });
@@ -112,6 +115,7 @@ exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
   })
     .populate("exam")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear")
     .sort({ createdAt: -1 });
@@ -179,6 +183,7 @@ exports.teacherGetExamResultsCtrl = AsyncHandler(async (req, res) => {
       populate: { path: "questions" },
     })
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear")
     .sort({ createdAt: -1 });
@@ -202,6 +207,7 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
       populate: { path: "questions" },
     })
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear");
 
@@ -324,6 +330,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
   )
     .populate("exam")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear");
 
@@ -374,6 +381,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
   )
     .populate("exam")
     .populate("classLevel")
+    .populate("yearGroup")
     .populate("academicTerm")
     .populate("academicYear");
 

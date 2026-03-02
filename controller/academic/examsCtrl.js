@@ -27,9 +27,10 @@ exports.createExam = AsyncHandler(async (req, res) => {
     examType,
     academicYear,
     classLevel,
+    yearGroup,
   } = req.body;
 
-  // Validate required fields
+  // Validate required fields - vocational: yearGroup OR classLevel
   if (
     !name ||
     !description ||
@@ -39,13 +40,18 @@ exports.createExam = AsyncHandler(async (req, res) => {
     !duration ||
     !examTime ||
     !examType ||
-    !academicYear ||
-    !classLevel
+    !academicYear
   ) {
     return res.status(400).json({
       status: "failed",
       message:
-        "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear, classLevel",
+        "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear. Provide yearGroup (vocational) or classLevel.",
+    });
+  }
+  if (!yearGroup && !classLevel) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Either yearGroup or classLevel must be provided",
     });
   }
 
@@ -123,7 +129,8 @@ exports.createExam = AsyncHandler(async (req, res) => {
     examTime,
     examType,
     academicYear,
-    classLevel, // Added missing classLevel field
+    ...(classLevel && { classLevel }),
+    ...(yearGroup && { yearGroup }),
     createdBy: req.userAuth._id,
   });
 
@@ -209,6 +216,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     examType,
     academicYear,
     classLevel,
+    yearGroup,
   } = req.body;
 
   // Check if name already exists (only if name is being updated, exclude current exam)
@@ -270,6 +278,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (examType !== undefined) updateData.examType = examType;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
   if (classLevel !== undefined) updateData.classLevel = classLevel;
+  if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
   // Don't update createdBy on update
 
   const updateFilter = {

@@ -65,6 +65,10 @@ const teacherSchema = new mongoose.Schema(
     classLevel: {
       type: String,
     },
+    yearGroup: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "YearGroup",
+    },
     academicYear: {
       type: String,
     },

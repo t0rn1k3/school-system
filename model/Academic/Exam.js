@@ -70,10 +70,17 @@ const examSchema = new Schema(
         ref: "Question",
       },
     ],
+    // Optional for vocational (use yearGroup instead)
     classLevel: {
       type: Schema.Types.ObjectId,
       ref: "ClassLevel",
-      required: true,
+      required: false,
+    },
+    // Group (e.g. 101, 102). Primary for vocational schools.
+    yearGroup: {
+      type: Schema.Types.ObjectId,
+      ref: "YearGroup",
+      required: false,
     },
     createdBy: {
       type: Schema.Types.ObjectId,
