@@ -4,6 +4,7 @@ const fs = require("fs");
 const ExamResult = require("../../model/Academic/ExamResults");
 const Exam = require("../../model/Academic/Exam");
 const Student = require("../../model/Academic/Student");
+const { checkAndGraduateStudent } = require("../../utils/graduationHelper");
 
 //@desc exam result checking
 //@route GET /api/v1/exam-results/:id
@@ -394,6 +395,11 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("yearGroup")
     // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
+
+  // Automatic graduation: if Passed, check if student has passed all program modules
+  if (publishResult.status === "Passed" && publishResult.student?._id) {
+    await checkAndGraduateStudent(publishResult.student._id.toString());
+  }
 
   res.status(200).json({
     status: "success",

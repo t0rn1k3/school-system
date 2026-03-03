@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const Exam = require("../../model/Academic/Exam");
 const ExamResult = require("../../model/Academic/ExamResults");
 const Admin = require("../../model/Staff/Admin");
+const Module = require("../../model/Academic/Module");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -183,6 +184,106 @@ exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
     status: "success",
     data: students,
     message: "All students fetched successfully",
+  });
+});
+
+//@dec get student graduation status
+//@route GET /api/v1/students/:studentId/graduation-status
+//@access Private (admin or student viewing own)
+
+exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
+  const studentId = req.params.studentId;
+  const userIsAdmin = req.userAuth?.role === "admin";
+  const isOwnProfile =
+    req.userAuth?._id?.toString() === studentId ||
+    req.userAuth?.id === studentId;
+
+  if (!userIsAdmin && !isOwnProfile) {
+    return res.status(403).json({
+      status: "failed",
+      message: "You can only view your own graduation status",
+    });
+  }
+
+  const student = await Student.findById(studentId)
+    .select("program isGraduated yearGraduated")
+    .populate("program", "name modules");
+
+  if (!student) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  if (!student.program) {
+    return res.status(200).json({
+      status: "success",
+      data: {
+        isGraduated: student.isGraduated || false,
+        eligible: false,
+        yearGraduated: student.yearGraduated,
+        modulesPassed: [],
+        modulesPending: [],
+        message: "Student has no program assigned",
+      },
+    });
+  }
+
+  const moduleIds = student.program.modules || [];
+  if (moduleIds.length === 0) {
+    return res.status(200).json({
+      status: "success",
+      data: {
+        isGraduated: student.isGraduated || false,
+        eligible: false,
+        yearGraduated: student.yearGraduated,
+        modulesPassed: [],
+        modulesPending: [],
+        message: "Program has no modules defined",
+      },
+    });
+  }
+
+  const passedResults = await ExamResult.find({
+    student: studentId,
+    status: "Passed",
+    isPublished: true,
+  })
+    .populate("exam", "module name")
+    .lean();
+
+  const passedModuleIds = new Set();
+  for (const er of passedResults) {
+    const mid = er.exam?.module?.toString?.() || er.exam?.module;
+    if (mid) passedModuleIds.add(mid);
+  }
+
+  const modulesInfo = await Module.find({
+    _id: { $in: moduleIds },
+    isDeleted: { $ne: true },
+  })
+    .select("name _id")
+    .lean();
+
+  const modulesPassed = modulesInfo.filter((m) =>
+    passedModuleIds.has(m._id.toString()),
+  );
+  const modulesPending = modulesInfo.filter(
+    (m) => !passedModuleIds.has(m._id.toString()),
+  );
+
+  const eligible = modulesPending.length === 0;
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      isGraduated: student.isGraduated || false,
+      eligible,
+      yearGraduated: student.yearGraduated,
+      modulesPassed: modulesPassed.map((m) => ({ _id: m._id, name: m.name })),
+      modulesPending: modulesPending.map((m) => ({ _id: m._id, name: m.name })),
+    },
   });
 });
 

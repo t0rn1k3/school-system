@@ -18,6 +18,7 @@ const {
   getStudentExamsCtrl,
   getStudentExamCtrl,
   submitProjectCtrl,
+  getGraduationStatusCtrl,
 } = require("../../controller/students/studentsCtrl");
 const uploadExamSubmission = require("../../middlewares/uploadExamSubmission");
 
@@ -32,6 +33,11 @@ studentRouter.post("/login", studentLoginCtrl);
 studentRouter.get("/profile", isStudentLogin, isStudent, getStudentProfileCtrl);
 studentRouter.get("/admin", isLogin, isAdmin, getStudentsCtrl);
 studentRouter.get("/:studentId/admin", isLogin, isAdmin, getSingleStudentCtrl);
+studentRouter.get(
+  "/:studentId/graduation-status",
+  isLogin,
+  getGraduationStatusCtrl,
+);
 studentRouter.get("/exams", isStudentLogin, isStudent, getStudentExamsCtrl);
 studentRouter.get("/exams/:examId", isStudentLogin, isStudent, getStudentExamCtrl);
 studentRouter.post(
