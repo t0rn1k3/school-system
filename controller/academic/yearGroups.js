@@ -58,12 +58,12 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
 
   //push to the academic year
   academicYearFound.yearGroups.push(yearGroupCreated._id);
-  academicYearFound.save();
+  await academicYearFound.save();
 
   //find the admin
   const admin = await Admin.findById(req.userAuth._id);
   admin.yearGroups.push(yearGroupCreated._id);
-  admin.save();
+  await admin.save();
 
   res.status(201).json({
     status: "success",

@@ -24,6 +24,13 @@ const moduleSchema = new Schema(
         description: { type: String, default: "" },
       },
     ],
+    // Teachers who teach this module (teacher can be in multiple programs/modules)
+    teachers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Teacher",
+      },
+    ],
     updatedBy: {
       type: Schema.Types.ObjectId,
       ref: "Admin",

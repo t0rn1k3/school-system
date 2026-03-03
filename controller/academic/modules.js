@@ -14,7 +14,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, program, criteria, order } = req.body;
+  const { name, description, program, criteria, order, teachers } = req.body;
 
   if (!name || !description || !program) {
     return res.status(400).json({
@@ -54,12 +54,17 @@ exports.createModule = AsyncHandler(async (req, res) => {
       }))
     : [];
 
+  const teachersArray = Array.isArray(teachers)
+    ? teachers.filter((t) => t)
+    : [];
+
   const moduleCreated = await Module.create({
     name,
     description,
     program,
     criteria: normalizedCriteria,
     order: typeof order === "number" ? order : 0,
+    teachers: teachersArray,
     createdBy: req.userAuth._id,
   });
 
@@ -67,10 +72,14 @@ exports.createModule = AsyncHandler(async (req, res) => {
   programFound.modules.push(moduleCreated._id);
   await programFound.save();
 
+  const populated = await Module.findById(moduleCreated._id)
+    .populate("program", "name code")
+    .populate("teachers", "name email teacherId");
+
   res.status(201).json({
     status: "success",
     message: "Module created successfully",
-    data: moduleCreated,
+    data: populated,
   });
 });
 
@@ -83,9 +92,13 @@ exports.getModules = AsyncHandler(async (req, res) => {
   if (req.query.program) {
     filter.program = req.query.program;
   }
+  if (req.query.teacher) {
+    filter.teachers = req.query.teacher;
+  }
 
   const modules = await Module.find(filter)
     .populate("program", "name code")
+    .populate("teachers", "name email teacherId")
     .sort({ order: 1, createdAt: 1 });
 
   res.status(200).json({
@@ -103,7 +116,9 @@ exports.getModule = AsyncHandler(async (req, res) => {
   const module = await Module.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
-  }).populate("program", "name code durationWeeks");
+  })
+    .populate("program", "name code durationWeeks")
+    .populate("teachers", "name email teacherId");
 
   if (!module) {
     return res.status(404).json({
@@ -131,7 +146,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, criteria, order } = req.body;
+  const { name, description, criteria, order, teachers } = req.body;
 
   const existingModule = await Module.findById(req.params.id).select("program");
   if (!existingModule) {
@@ -168,13 +183,18 @@ exports.updateModule = AsyncHandler(async (req, res) => {
       description: c.description || "",
     }));
   }
+  if (teachers !== undefined && Array.isArray(teachers)) {
+    updateData.teachers = teachers.filter((t) => t);
+  }
   updateData.updatedBy = req.userAuth._id;
 
   const module = await Module.findOneAndUpdate(
     { _id: req.params.id },
     updateData,
-    { new: true }
-  ).populate("program", "name code");
+    { new: true },
+  )
+    .populate("program", "name code")
+    .populate("teachers", "name email teacherId");
 
   if (!module) {
     return res.status(404).json({
@@ -203,7 +223,11 @@ exports.deleteModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  await Module.findByIdAndUpdate(req.params.id, { isDeleted: true }, { new: true });
+  await Module.findByIdAndUpdate(
+    req.params.id,
+    { isDeleted: true },
+    { new: true },
+  );
 
   if (module.program) {
     await Program.findByIdAndUpdate(module.program, {

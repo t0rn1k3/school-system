@@ -35,6 +35,12 @@ const academicYearSchema = new mongoose.Schema(
         ref: "Teacher",
       },
     ],
+    yearGroups: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "YearGroup",
+      },
+    ],
     isDeleted: {
       type: Boolean,
       default: false,
