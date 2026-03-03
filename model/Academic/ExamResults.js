@@ -9,6 +9,11 @@ const examResultSchema = new Schema(
       type: String,
       required: true,
     },
+    student: {
+      type: Schema.Types.ObjectId,
+      ref: "Student",
+      required: false,
+    },
     exam: {
       type: Schema.Types.ObjectId,
       ref: "Exam",

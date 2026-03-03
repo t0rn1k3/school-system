@@ -29,6 +29,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     _id: id,
   })
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -47,6 +48,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
           path: "questions",
         },
       })
+      .populate("student", "name")
       .populate("classLevel")
       .populate("yearGroup")
       .populate("academicTerm")
@@ -83,6 +85,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
 exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
   const results = await ExamResult.find({})
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -116,6 +119,7 @@ exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
     isPublished: true,
   })
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -184,6 +188,7 @@ exports.teacherGetExamResultsCtrl = AsyncHandler(async (req, res) => {
       path: "exam",
       populate: { path: "questions" },
     })
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -208,6 +213,7 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
       path: "exam",
       populate: { path: "questions" },
     })
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -328,9 +334,10 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
       remarks,
       isFullyGraded: true,
     },
-    { new: true }
+    { new: true },
   )
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -379,9 +386,10 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
   const publishResult = await ExamResult.findByIdAndUpdate(
     req.params.id,
     { isPublished: true },
-    { new: true }
+    { new: true },
   )
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")
@@ -429,7 +437,9 @@ exports.teacherDownloadProjectCtrl = AsyncHandler(async (req, res) => {
   }
 
   const downloadName =
-    examResult.submittedFile.originalName || examResult.submittedFile.filename || "project.zip";
+    examResult.submittedFile.originalName ||
+    examResult.submittedFile.filename ||
+    "project.zip";
   res.download(filePath, downloadName);
 });
 
@@ -459,7 +469,9 @@ exports.adminDownloadProjectCtrl = AsyncHandler(async (req, res) => {
   }
 
   const downloadName =
-    examResult.submittedFile.originalName || examResult.submittedFile.filename || "project.zip";
+    examResult.submittedFile.originalName ||
+    examResult.submittedFile.filename ||
+    "project.zip";
   res.download(filePath, downloadName);
 });
 
@@ -481,7 +493,8 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
   if (!examResult.submittedFile?.path) {
     return res.status(400).json({
       status: "failed",
-      message: "This is not a project submission. Use the regular grade endpoint.",
+      message:
+        "This is not a project submission. Use the regular grade endpoint.",
     });
   }
 
@@ -504,7 +517,8 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const total = totalMark !== undefined ? Number(totalMark) : (examResult.totalMark || 100);
+  const total =
+    totalMark !== undefined ? Number(totalMark) : examResult.totalMark || 100;
   if (!Number.isFinite(total) || total <= 0) {
     return res.status(400).json({
       status: "failed",
@@ -516,12 +530,16 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
   const grade = total > 0 ? (numScore / total) * 100 : 0;
   const passMark = examResult.passMark ?? 50;
   const computedStatus = grade >= passMark ? "Passed" : "Failed";
-  const finalStatus = status && ["Passed", "Failed", "Pending"].includes(status)
-    ? status
-    : computedStatus;
+  const finalStatus =
+    status && ["Passed", "Failed", "Pending"].includes(status)
+      ? status
+      : computedStatus;
 
   let finalRemarks = "Poor";
-  if (remarks && ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)) {
+  if (
+    remarks &&
+    ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)
+  ) {
     finalRemarks = remarks;
   } else if (grade >= 80) finalRemarks = "Excellent";
   else if (grade >= 70) finalRemarks = "Very Good";
@@ -538,9 +556,10 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
       remarks: finalRemarks,
       isFullyGraded: true,
     },
-    { new: true }
+    { new: true },
   )
     .populate("exam")
+    .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
     .populate("academicTerm")

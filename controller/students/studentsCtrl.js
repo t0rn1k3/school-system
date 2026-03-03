@@ -675,6 +675,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 
   const examResult = await ExamResult.create({
     studentId: studentFound?.studentId,
+    student: studentFound?._id,
     exam: examFound?._id,
     score,
     grade,
@@ -769,6 +770,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
 
   const examResult = await ExamResult.create({
     studentId: studentFound.studentId,
+    student: studentFound._id,
     exam: examFound._id,
     score: 0,
     grade: 0,
