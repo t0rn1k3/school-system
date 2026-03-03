@@ -16,12 +16,17 @@ const examSchema = new Schema(
     subject: {
       type: Schema.Types.ObjectId,
       ref: "Subject",
-      required: true,
+      required: false,
     },
     program: {
       type: Schema.Types.ObjectId,
       ref: "Program",
       required: true,
+    },
+    module: {
+      type: Schema.Types.ObjectId,
+      ref: "Module",
+      required: false,
     },
     passMark: {
       type: Number,
@@ -32,6 +37,12 @@ const examSchema = new Schema(
       type: Number,
       required: true,
       default: 100,
+    },
+    // "percentage" = score >= passMark%; "all-criteria" = all module criteria must pass
+    passCriteriaType: {
+      type: String,
+      enum: ["percentage", "all-criteria"],
+      default: "percentage",
     },
 
     // Vocational: academic terms not used - kept optional for compatibility

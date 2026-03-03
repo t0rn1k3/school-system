@@ -19,8 +19,8 @@ exports.createExam = AsyncHandler(async (req, res) => {
     name,
     description,
     subject,
+    module,
     program,
-    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate,
     examTime,
@@ -30,6 +30,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     yearGroup,
     passMark,
     totalMark,
+    passCriteriaType,
   } = req.body;
 
   // Validate passMark (0-100) if provided
@@ -53,13 +54,11 @@ exports.createExam = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Validate required fields - vocational: yearGroup OR classLevel (academicTerm not used)
+  // Validate required fields - vocational: yearGroup OR classLevel; subject OR module
   if (
     !name ||
     !description ||
-    !subject ||
     !program ||
-    // !academicTerm || // Vocational: academic terms not used
     !duration ||
     !examTime ||
     !examType ||
@@ -68,7 +67,13 @@ exports.createExam = AsyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "failed",
       message:
-        "All required fields must be provided: name, description, subject, program, duration, examTime, examType, academicYear. Provide yearGroup (vocational) or classLevel.",
+        "All required fields must be provided: name, description, program, duration, examTime, examType, academicYear. Provide yearGroup or classLevel. Provide subject or module.",
+    });
+  }
+  if (!subject && !module) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Either subject or module must be provided",
     });
   }
   if (!yearGroup && !classLevel) {
@@ -83,6 +88,16 @@ exports.createExam = AsyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "failed",
       message: `examType must be one of: ${validExamTypes.join(", ")}`,
+    });
+  }
+  const validPassCriteriaTypes = ["percentage", "all-criteria"];
+  if (
+    passCriteriaType !== undefined &&
+    !validPassCriteriaTypes.includes(passCriteriaType)
+  ) {
+    return res.status(400).json({
+      status: "failed",
+      message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
     });
   }
 
@@ -148,13 +163,12 @@ exports.createExam = AsyncHandler(async (req, res) => {
     parsedExamDate = new Date(); // Default to current date
   }
 
-  // exam created
   const examCreated = await Exam.create({
     name,
     description,
-    subject,
+    ...(subject && { subject }),
+    ...(module && { module }),
     program,
-    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate: parsedExamDate,
     examTime,
@@ -164,6 +178,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     ...(yearGroup && { yearGroup }),
     ...(passMark !== undefined && { passMark: Number(passMark) }),
     ...(totalMark !== undefined && { totalMark: Number(totalMark) }),
+    ...(passCriteriaType && { passCriteriaType }),
     createdBy: req.userAuth._id,
   });
 
@@ -241,8 +256,8 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     name,
     description,
     subject,
+    module,
     program,
-    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate,
     examTime,
@@ -252,6 +267,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     yearGroup,
     passMark,
     totalMark,
+    passCriteriaType,
   } = req.body;
 
   // Validate passMark (0-100) if provided
@@ -280,6 +296,15 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       return res.status(400).json({
         status: "failed",
         message: `examType must be one of: ${validExamTypes.join(", ")}`,
+      });
+    }
+  }
+  if (passCriteriaType !== undefined) {
+    const validPassCriteriaTypes = ["percentage", "all-criteria"];
+    if (!validPassCriteriaTypes.includes(passCriteriaType)) {
+      return res.status(400).json({
+        status: "failed",
+        message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
       });
     }
   }
@@ -335,6 +360,8 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
   if (subject !== undefined) updateData.subject = subject;
+  if (module !== undefined) updateData.module = module;
+  if (passCriteriaType !== undefined) updateData.passCriteriaType = passCriteriaType;
   if (program !== undefined) updateData.program = program;
   // if (academicTerm !== undefined) updateData.academicTerm = academicTerm; // Vocational: academic terms not used
   if (duration !== undefined) updateData.duration = duration;
