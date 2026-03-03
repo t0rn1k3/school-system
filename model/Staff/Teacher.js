@@ -61,6 +61,20 @@ const teacherSchema = new mongoose.Schema(
     program: {
       type: String,
     },
+    // Vocational: teacher can be in multiple programs
+    programs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Program",
+      },
+    ],
+    // Vocational: teacher can teach multiple modules
+    modules: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Module",
+      },
+    ],
     //A teacher can teach in more than one class level
     classLevel: {
       type: String,

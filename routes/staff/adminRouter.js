@@ -71,25 +71,28 @@ adminRouter.put("/", isLogin, isAdmin, updateAdminCtrl);
 
 adminRouter.delete("/:id", deleteAdminCTRL);
 
-// suspend teacher
-
-adminRouter.put("/suspend/teachers/:id", adminSuspendTeacherCtrl);
+// suspend teacher (supports /teacher/:id and /teachers/:id)
+adminRouter.put("/suspend/teacher/:id", isLogin, isAdmin, adminSuspendTeacherCtrl);
+adminRouter.put("/suspend/teachers/:id", isLogin, isAdmin, adminSuspendTeacherCtrl);
 
 //unsuspend teacher
-
-adminRouter.put("/unsuspend/teachers/:id", adminUnsupendTeacherCtrl);
+adminRouter.put("/unsuspend/teacher/:id", isLogin, isAdmin, adminUnsupendTeacherCtrl);
+adminRouter.put("/unsuspend/teachers/:id", isLogin, isAdmin, adminUnsupendTeacherCtrl);
 
 // withdraw teacher (permanently deletes from database)
-
-adminRouter.put(
-  "/withdraw/teachers/:id",
-  isLogin,
-  isAdmin,
-  adminWithdrawTeacherCtrl,
-);
+// PUT and GET supported (some clients use GET by default)
+adminRouter.put("/withdraw/teacher/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
+adminRouter.get("/withdraw/teacher/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
+adminRouter.put("/withdraw/teachers/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
+adminRouter.get("/withdraw/teachers/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
 
 //unwithdraw teacher (disabled - withdrawn teachers are deleted)
-
+adminRouter.put(
+  "/unwithdraw/teacher/:id",
+  isLogin,
+  isAdmin,
+  adminUnwithdrawTeacherCtrl,
+);
 adminRouter.put(
   "/unwithdraw/teachers/:id",
   isLogin,

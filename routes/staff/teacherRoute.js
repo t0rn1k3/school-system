@@ -21,7 +21,10 @@ const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
 const isTeacherLogin = require("../../middlewares/isTeacherLogin");
 const isTeacher = require("../../middlewares/isTeacher");
-const { adminUpdateTeacher } = require("../../controller/staff/teachersCtrl");
+const {
+  adminUpdateTeacher,
+  withdrawTeacherCtrl,
+} = require("../../controller/staff/teachersCtrl");
 
 teacherRouter.post(
   "/admin/register",
@@ -73,6 +76,8 @@ teacherRouter.put(
 teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, getSingleTeacherCtrl);
 // Teacher updates own profile
 teacherRouter.put("/profile", isTeacherLogin, isTeacher, updateTeacherProfileCtrl);
+// Admin withdraw (delete) teacher - DELETE /api/v1/teachers/:teacherId
+teacherRouter.delete("/:teacherId", isLogin, isAdmin, withdrawTeacherCtrl);
 // Admin updates specific teacher
 teacherRouter.put("/:teacherId", isLogin, isAdmin, adminUpdateTeacher);
 module.exports = teacherRouter;

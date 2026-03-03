@@ -20,7 +20,8 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, email, password, program, yearGroup, academicYear } = req.body;
+  const { name, email, password, program, yearGroup, academicYear, modules } =
+    req.body;
 
   // find admin
   const adminFound = await Admin.findById(req.userAuth._id);
@@ -54,7 +55,9 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   //hash password
   const hashedPassword = await hashPassword(password);
 
-  //create student
+  const modulesArray =
+    Array.isArray(modules) && modules.length > 0 ? modules.filter((m) => m) : [];
+
   const studentCreated = await Student.create({
     name,
     email: email.toLowerCase().trim(),
@@ -62,6 +65,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
     ...(program && { program }),
     ...(yearGroup && { yearGroup }),
     ...(academicYear && { academicYear }),
+    ...(modulesArray.length > 0 && { modules: modulesArray }),
   });
 
   // push to the admin
@@ -122,7 +126,7 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
     .select("-password -createdAt -updatedAt")
     .populate("examResults")
     .populate("program")
-    .populate("currentClassLevel")
+    .populate("modules", "name description")
     .populate("yearGroup");
   if (!student) {
     return res.status(404).json({
@@ -137,7 +141,7 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
     email: student?.email,
     studentId: student?.studentId,
     program: student?.program,
-    currentClassLevel: student?.currentClassLevel,
+    modules: student?.modules,
     yearGroup: student?.yearGroup,
     dateAdmitted: student?.dateAdmitted,
     isWithdrawn: student?.isWithdrawn,
@@ -170,8 +174,11 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
 exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted students (handle documents without isDeleted field)
   const students = await Student.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .populate("program", "name code")
+    .populate("modules", "name description")
+    .populate("yearGroup");
   res.status(200).json({
     status: "success",
     data: students,
@@ -188,7 +195,10 @@ exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
   const student = await Student.findOne({
     _id: studentId,
     isDeleted: { $ne: true },
-  });
+  })
+    .populate("program", "name code")
+    .populate("modules", "name description")
+    .populate("yearGroup");
   if (!student) {
     return res.status(404).json({
       status: "failed",
@@ -351,7 +361,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
 
   const {
     program,
-    classLevels,
+    modules,
     academicYear,
     yearGroup,
     name,
@@ -363,7 +373,6 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     dateAdmitted,
     yearGraduated,
     prefectName,
-    currentClassLevel,
   } = req.body;
 
   // Check if student is withdrawn (only block if not explicitly un-withdrawing)
@@ -377,7 +386,9 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   // Build update object with only provided fields
   const updateData = {};
   if (program !== undefined) updateData.program = program;
-  if (classLevels !== undefined) updateData.classLevels = classLevels;
+  if (modules !== undefined && Array.isArray(modules)) {
+    updateData.modules = modules.filter((m) => m);
+  }
   if (academicYear !== undefined) updateData.academicYear = academicYear;
   if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
   if (name !== undefined) updateData.name = name;
@@ -403,8 +414,6 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (isWithdrawn !== undefined) updateData.isWithdrawn = isWithdrawn;
   if (isSuspended !== undefined) updateData.isSuspended = isSuspended;
   if (isGraduated !== undefined) updateData.isGraduated = isGraduated;
-  if (currentClassLevel !== undefined)
-    updateData.currentClassLevel = currentClassLevel;
   if (dateAdmitted !== undefined) updateData.dateAdmitted = dateAdmitted;
   if (yearGraduated !== undefined) updateData.yearGraduated = yearGraduated;
   if (prefectName !== undefined) updateData.prefectName = prefectName;
@@ -418,15 +427,15 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Update student with all fields at once
-  const updatedStudent = await Student.findByIdAndUpdate(
-    studentId,
-    updateData,
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
+  await Student.findByIdAndUpdate(studentId, updateData, {
+    new: true,
+    runValidators: true,
+  });
+
+  const updatedStudent = await Student.findById(studentId)
+    .populate("program", "name code")
+    .populate("modules", "name description")
+    .populate("yearGroup");
 
   res.status(200).json({
     status: "success",
@@ -443,7 +452,7 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
   const studentFound = await Student.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
-  }).select("currentClassLevel academicYear yearGroup");
+  }).select("academicYear yearGroup");
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
@@ -452,11 +461,8 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
   }
 
   const filter = { isDeleted: { $ne: true } };
-  // Vocational: filter by yearGroup; fallback to classLevel
   if (studentFound.yearGroup) {
     filter.yearGroup = studentFound.yearGroup;
-  } else if (studentFound.currentClassLevel) {
-    filter.classLevel = studentFound.currentClassLevel;
   }
   if (studentFound.academicYear) {
     filter.academicYear = studentFound.academicYear;

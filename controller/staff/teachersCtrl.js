@@ -2,6 +2,9 @@ const AsyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const Teacher = require("../../model/Staff/Teacher");
 const Admin = require("../../model/Staff/Admin");
+const Program = require("../../model/Academic/Program");
+const Module = require("../../model/Academic/Module");
+
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
 
@@ -113,7 +116,9 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
   if (req.query.name && typeof req.query.name === "string") {
     filter.name = { $regex: req.query.name, $options: "i" };
   }
-  const TeacherQuery = Teacher.find(filter);
+  const TeacherQuery = Teacher.find(filter)
+    .populate("programs", "name code")
+    .populate("modules", "name description");
   //convert query strings to numbers
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
@@ -163,7 +168,9 @@ exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
   const teacher = await Teacher.findOne({
     _id: teacherId,
     isDeleted: { $ne: true },
-  });
+  })
+    .populate("programs", "name code")
+    .populate("modules", "name description");
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -185,7 +192,10 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
   const teacher = await Teacher.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
-  }).select("-password -createdAt -updatedAt");
+  })
+    .select("-password -createdAt -updatedAt")
+    .populate("programs", "name code")
+    .populate("modules", "name description");
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -323,7 +333,17 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { program, classLevel, academicYear, yearGroup, subject, name, email } = req.body;
+  const {
+    program,
+    programs,
+    modules,
+    classLevel,
+    academicYear,
+    yearGroup,
+    subject,
+    name,
+    email,
+  } = req.body;
   const teacherId = req.params.teacherId; // Fixed: was teacherID (wrong case)
 
   // Find teacher (ignore soft-deleted)
@@ -350,6 +370,12 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   // Build update object with only provided fields
   const updateData = {};
   if (program !== undefined) updateData.program = program;
+  if (programs !== undefined && Array.isArray(programs)) {
+    updateData.programs = programs.filter((p) => p);
+  }
+  if (modules !== undefined && Array.isArray(modules)) {
+    updateData.modules = modules.filter((m) => m);
+  }
   if (classLevel !== undefined) updateData.classLevel = classLevel;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
   if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
@@ -390,9 +416,94 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     },
   );
 
+  // Sync Program.teachers and Module.teachers when programs/modules are updated
+  if (programs !== undefined || modules !== undefined) {
+    const finalPrograms = updatedTeacher.programs || [];
+    const finalModules = updatedTeacher.modules || [];
+    const teacherObjId = updatedTeacher._id;
+
+    if (programs !== undefined) {
+      const prevProgramIds = (teacherFound.programs || []).map((p) => p.toString());
+      const newProgramIds = finalPrograms.map((p) => p.toString());
+      const toRemove = prevProgramIds.filter((id) => !newProgramIds.includes(id));
+      const toAdd = newProgramIds.filter((id) => !prevProgramIds.includes(id));
+      if (toRemove.length) {
+        await Program.updateMany(
+          { _id: { $in: toRemove } },
+          { $pull: { teachers: teacherObjId } },
+        );
+      }
+      if (toAdd.length) {
+        await Program.updateMany(
+          { _id: { $in: toAdd } },
+          { $addToSet: { teachers: teacherObjId } },
+        );
+      }
+    }
+
+    if (modules !== undefined) {
+      const prevModuleIds = (teacherFound.modules || []).map((m) => m.toString());
+      const newModuleIds = finalModules.map((m) => m.toString());
+      const toRemove = prevModuleIds.filter((id) => !newModuleIds.includes(id));
+      const toAdd = newModuleIds.filter((id) => !prevModuleIds.includes(id));
+      if (toRemove.length) {
+        await Module.updateMany(
+          { _id: { $in: toRemove } },
+          { $pull: { teachers: teacherObjId } },
+        );
+      }
+      if (toAdd.length) {
+        await Module.updateMany(
+          { _id: { $in: toAdd } },
+          { $addToSet: { teachers: teacherObjId } },
+        );
+      }
+    }
+  }
+
+  const teacherWithPopulated = await Teacher.findById(teacherId)
+    .populate("programs", "name code")
+    .populate("modules", "name description");
+
   res.status(200).json({
     status: "success",
-    data: updatedTeacher,
+    data: teacherWithPopulated,
     message: "Teacher updated successfully",
+  });
+});
+
+//@desc Withdraw (permanently delete) teacher
+//@route DELETE /api/v1/teachers/:teacherId
+//@access Private admin only
+
+const findTeacherQuery = (idParam) => {
+  const isObjectId = /^[a-fA-F0-9]{24}$/.test(idParam);
+  return isObjectId ? { _id: idParam } : { teacherId: idParam };
+};
+
+exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  const idParam = req.params.teacherId?.trim();
+  if (!idParam) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Teacher ID is required",
+    });
+  }
+  const teacher = await Teacher.findOneAndDelete(findTeacherQuery(idParam));
+  if (!teacher) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+  const teacherObjId = teacher._id;
+  await Admin.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await Program.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await Module.updateMany({}, { $pull: { teachers: teacherObjId } });
+
+  res.status(200).json({
+    status: "success",
+    message: "Teacher withdrawn and permanently deleted from database",
+    data: { id: teacherObjId.toString() },
   });
 });

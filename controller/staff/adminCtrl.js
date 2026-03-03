@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const Admin = require("../../model/Staff/Admin");
 const Teacher = require("../../model/Staff/Teacher");
 const Student = require("../../model/Academic/Student");
+const Program = require("../../model/Academic/Program");
+const Module = require("../../model/Academic/Module");
 const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
@@ -258,47 +260,26 @@ exports.deleteAdminCTRL = AsyncHandler(async (req, res) => {
 
 //@desc suspend teacher
 //@route PUT  api/v1/admins/suspend/teacher/:id
-//@acess Private
-
-exports.adminSuspendTeacherCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "sucess",
-      data: " admin suspended teacher",
-    });
-  } catch (error) {
-    res.json({
-      status: "failed",
-      error: error.message,
-    });
-  }
-};
-
-//@desc unsuspend teacher
-//@route PUT  api/v1/admins/unsuspend/teacher/:id
-//@acess Private
-
-exports.adminUnsupendTeacherCtrl = (req, res) => {
-  try {
-    res.status(201).json({
-      status: "success",
-      data: " admin unsuspended teacher",
-    });
-  } catch (error) {
-    res.json({
-      status: "failed",
-      error: error.message,
-    });
-  }
-};
-
-//@desc withdraw teacher (permanently deletes from database)
-//@route PUT  api/v1/admins/withdraw/teacher/:id
 //@access Private admin only
 
-exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
-  const teacherId = req.params.id;
-  const teacher = await Teacher.findByIdAndDelete(teacherId);
+const findTeacherQuery = (idParam) => {
+  const isObjectId = /^[a-fA-F0-9]{24}$/.test(idParam);
+  return isObjectId ? { _id: idParam } : { teacherId: idParam };
+};
+
+exports.adminSuspendTeacherCtrl = AsyncHandler(async (req, res) => {
+  const idParam = req.params.id?.trim();
+  if (!idParam) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Teacher ID is required",
+    });
+  }
+  const teacher = await Teacher.findOneAndUpdate(
+    findTeacherQuery(idParam),
+    { isSuspended: true },
+    { new: true },
+  );
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -307,8 +288,69 @@ exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   }
   res.status(200).json({
     status: "success",
+    message: "Teacher suspended successfully",
+    data: teacher,
+  });
+});
+
+//@desc unsuspend teacher
+//@route PUT  api/v1/admins/unsuspend/teacher/:id
+//@access Private admin only
+
+exports.adminUnsupendTeacherCtrl = AsyncHandler(async (req, res) => {
+  const idParam = req.params.id?.trim();
+  if (!idParam) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Teacher ID is required",
+    });
+  }
+  const teacher = await Teacher.findOneAndUpdate(
+    findTeacherQuery(idParam),
+    { isSuspended: false },
+    { new: true },
+  );
+  if (!teacher) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+  res.status(200).json({
+    status: "success",
+    message: "Teacher unsuspended successfully",
+    data: teacher,
+  });
+});
+
+//@desc withdraw teacher (permanently deletes from database)
+//@route PUT  api/v1/admins/withdraw/teacher/:id
+//@access Private admin only
+
+exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  const idParam = req.params.id?.trim();
+  if (!idParam) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Teacher ID is required",
+    });
+  }
+  const teacher = await Teacher.findOneAndDelete(findTeacherQuery(idParam));
+  if (!teacher) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+  const teacherObjId = teacher._id;
+  await Admin.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await Program.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await Module.updateMany({}, { $pull: { teachers: teacherObjId } });
+
+  res.status(200).json({
+    status: "success",
     message: "Teacher withdrawn and permanently deleted from database",
-    data: { id: teacherId },
+    data: { id: teacherObjId.toString() },
   });
 });
 
