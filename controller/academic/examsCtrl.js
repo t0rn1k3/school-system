@@ -28,7 +28,30 @@ exports.createExam = AsyncHandler(async (req, res) => {
     academicYear,
     classLevel,
     yearGroup,
+    passMark,
+    totalMark,
   } = req.body;
+
+  // Validate passMark (0-100) if provided
+  if (passMark !== undefined) {
+    const p = Number(passMark);
+    if (!Number.isFinite(p) || p < 0 || p > 100) {
+      return res.status(400).json({
+        status: "failed",
+        message: "passMark must be a number between 0 and 100 (percentage)",
+      });
+    }
+  }
+  // Validate totalMark (positive) if provided
+  if (totalMark !== undefined) {
+    const t = Number(totalMark);
+    if (!Number.isFinite(t) || t <= 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "totalMark must be a positive number",
+      });
+    }
+  }
 
   // Validate required fields - vocational: yearGroup OR classLevel
   if (
@@ -131,6 +154,8 @@ exports.createExam = AsyncHandler(async (req, res) => {
     academicYear,
     ...(classLevel && { classLevel }),
     ...(yearGroup && { yearGroup }),
+    ...(passMark !== undefined && { passMark: Number(passMark) }),
+    ...(totalMark !== undefined && { totalMark: Number(totalMark) }),
     createdBy: req.userAuth._id,
   });
 
@@ -217,7 +242,29 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     academicYear,
     classLevel,
     yearGroup,
+    passMark,
+    totalMark,
   } = req.body;
+
+  // Validate passMark (0-100) if provided
+  if (passMark !== undefined) {
+    const p = Number(passMark);
+    if (!Number.isFinite(p) || p < 0 || p > 100) {
+      return res.status(400).json({
+        status: "failed",
+        message: "passMark must be a number between 0 and 100 (percentage)",
+      });
+    }
+  }
+  if (totalMark !== undefined) {
+    const t = Number(totalMark);
+    if (!Number.isFinite(t) || t <= 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "totalMark must be a positive number",
+      });
+    }
+  }
 
   // Check if name already exists (only if name is being updated, exclude current exam)
   if (name) {
@@ -279,6 +326,8 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (academicYear !== undefined) updateData.academicYear = academicYear;
   if (classLevel !== undefined) updateData.classLevel = classLevel;
   if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
+  if (passMark !== undefined) updateData.passMark = Number(passMark);
+  if (totalMark !== undefined) updateData.totalMark = Number(totalMark);
   // Don't update createdBy on update
 
   const updateFilter = {
