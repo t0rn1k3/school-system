@@ -174,6 +174,12 @@ exports.deleteProgram = AsyncHandler(async (req, res) => {
     });
   }
 
+  // Remove program from all admins' programs array so it no longer appears in profile
+  await Admin.updateMany(
+    { programs: req.params.id },
+    { $pull: { programs: req.params.id } },
+  );
+
   res.status(200).json({
     status: "success",
     message: "Program deleted successfully",

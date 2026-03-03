@@ -79,6 +79,11 @@ const ProgramSchema = new Schema(
         ref: "Module",
       },
     ],
+    // Soft delete: hide from lists but keep data for history
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

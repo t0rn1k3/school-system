@@ -101,7 +101,10 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
     .select("-password -createdAt -updatedAt")
     .populate("academicYears")
     // .populate("academicTerms") // Vocational: academic terms not used
-    .populate("programs")
+    .populate({
+      path: "programs",
+      match: { isDeleted: { $ne: true } }, // Exclude soft-deleted programs
+    })
     .populate("yearGroups")
     .populate("classLevels");
   if (!admin) {
