@@ -32,7 +32,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
 
   if (!examResult) {
@@ -51,7 +51,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
       .populate("student", "name")
       .populate("classLevel")
       .populate("yearGroup")
-      .populate("academicTerm")
+      // .populate("academicTerm") // Vocational: academic terms not used
       .populate("academicYear");
   }
 
@@ -88,7 +88,7 @@ exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear")
     .sort({ createdAt: -1 });
   res.status(200).json({
@@ -122,7 +122,7 @@ exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear")
     .sort({ createdAt: -1 });
 
@@ -191,7 +191,7 @@ exports.teacherGetExamResultsCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear")
     .sort({ createdAt: -1 });
 
@@ -216,7 +216,7 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
 
   if (!examResult) {
@@ -340,7 +340,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
 
   res.status(200).json({
@@ -392,7 +392,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
 
   res.status(200).json({
@@ -562,7 +562,7 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
 
   res.status(200).json({

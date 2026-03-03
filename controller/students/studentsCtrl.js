@@ -467,8 +467,8 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
     .populate("subject")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
     .populate("academicYear")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .sort({ examDate: -1 });
 
   res.status(200).json({
@@ -499,8 +499,8 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
     .populate("subject")
     .populate("classLevel")
     .populate("yearGroup")
-    .populate("academicTerm")
     .populate("academicYear");
+    // .populate("academicTerm"); // Vocational: academic terms not used
   if (!exam || exam.isDeleted) {
     return res.status(404).json({
       status: "failed",
@@ -550,8 +550,8 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 
   // get exam
   const examFound = await Exam.findById(req.params.examId)
-    .populate("questions")
-    .populate("academicTerm");
+    .populate("questions");
+    // .populate("academicTerm"); // Vocational: academic terms not used
   if (!examFound) {
     return res.status(404).json({
       status: "failed",
@@ -687,7 +687,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     classLevel: examFound?.classLevel,
     yearGroup: examFound?.yearGroup,
     academicYear: examFound?.academicYear,
-    academicTerm: examFound?.academicTerm,
+    // academicTerm: examFound?.academicTerm, // Vocational: academic terms not used
     isPublished: false,
     isFullyGraded: !hasOpenEnded,
   });
@@ -730,7 +730,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   }
 
   const examFound = await Exam.findById(examId)
-    .populate("academicTerm")
+    // .populate("academicTerm") // Vocational: academic terms not used
     .populate("academicYear");
   if (!examFound || examFound.isDeleted) {
     return res.status(404).json({
@@ -782,7 +782,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
     classLevel: examFound.classLevel,
     yearGroup: examFound.yearGroup,
     academicYear: examFound.academicYear,
-    academicTerm: examFound.academicTerm,
+    // academicTerm: examFound.academicTerm, // Vocational: academic terms not used
     isPublished: false,
     isFullyGraded: false,
     submittedFile: {

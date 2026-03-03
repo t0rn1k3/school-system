@@ -16,10 +16,11 @@ const subjectSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Teacher",
     },
+    // Vocational: academic terms not used - kept optional for compatibility
     academicTerm: {
       type: Schema.Types.ObjectId,
       ref: "AcademicTerm",
-      required: true,
+      required: false,
     },
     createdBy: {
       type: Schema.Types.ObjectId,

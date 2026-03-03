@@ -84,10 +84,11 @@ const examResultSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "YearGroup",
     },
+    // Vocational: academic terms not used - kept optional for compatibility
     academicTerm: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AcademicTerm",
-      required: true,
+      required: false,
     },
     academicYear: {
       type: mongoose.Schema.Types.ObjectId,

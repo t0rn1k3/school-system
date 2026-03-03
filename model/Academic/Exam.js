@@ -34,10 +34,11 @@ const examSchema = new Schema(
       default: 100,
     },
 
+    // Vocational: academic terms not used - kept optional for compatibility
     academicTerm: {
       type: Schema.Types.ObjectId,
       ref: "AcademicTerm",
-      required: true,
+      required: false,
     },
     duration: {
       type: String,

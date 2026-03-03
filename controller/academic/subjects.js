@@ -16,7 +16,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, academicTerm } = req.body;
+  const { name, description /* academicTerm */ } = req.body; // Vocational: academicTerm not used
 
   // Check if name already exists
   const programFound = await Program.findById(req.params.programId);
@@ -38,7 +38,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
   const subjectCreated = await Subject.create({
     name,
     description,
-    academicTerm,
+    // academicTerm, // Vocational: academic terms not used
     createdBy: req.userAuth._id,
   });
 
@@ -106,7 +106,7 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, academicTerm } = req.body;
+  const { name, description /* academicTerm */ } = req.body; // Vocational: academicTerm not used
 
   // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
@@ -127,7 +127,7 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
-  if (academicTerm !== undefined) updateData.academicTerm = academicTerm;
+  // if (academicTerm !== undefined) updateData.academicTerm = academicTerm; // Vocational: academic terms not used
   updateData.updatedBy = req.userAuth._id;
 
   const subject = await Subject.findOneAndUpdate(

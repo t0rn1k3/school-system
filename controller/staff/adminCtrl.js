@@ -100,7 +100,7 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
   })
     .select("-password -createdAt -updatedAt")
     .populate("academicYears")
-    .populate("academicTerms")
+    // .populate("academicTerms") // Vocational: academic terms not used
     .populate("programs")
     .populate("yearGroups")
     .populate("classLevels");

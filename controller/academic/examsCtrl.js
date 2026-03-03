@@ -20,7 +20,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     description,
     subject,
     program,
-    academicTerm,
+    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate,
     examTime,
@@ -53,13 +53,13 @@ exports.createExam = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Validate required fields - vocational: yearGroup OR classLevel
+  // Validate required fields - vocational: yearGroup OR classLevel (academicTerm not used)
   if (
     !name ||
     !description ||
     !subject ||
     !program ||
-    !academicTerm ||
+    // !academicTerm || // Vocational: academic terms not used
     !duration ||
     !examTime ||
     !examType ||
@@ -68,7 +68,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "failed",
       message:
-        "All required fields must be provided: name, description, subject, program, academicTerm, duration, examTime, examType, academicYear. Provide yearGroup (vocational) or classLevel.",
+        "All required fields must be provided: name, description, subject, program, duration, examTime, examType, academicYear. Provide yearGroup (vocational) or classLevel.",
     });
   }
   if (!yearGroup && !classLevel) {
@@ -154,7 +154,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     description,
     subject,
     program,
-    academicTerm,
+    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate: parsedExamDate,
     examTime,
@@ -242,7 +242,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     description,
     subject,
     program,
-    academicTerm,
+    // academicTerm, // Vocational: academic terms not used
     duration,
     examDate,
     examTime,
@@ -336,7 +336,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (description !== undefined) updateData.description = description;
   if (subject !== undefined) updateData.subject = subject;
   if (program !== undefined) updateData.program = program;
-  if (academicTerm !== undefined) updateData.academicTerm = academicTerm;
+  // if (academicTerm !== undefined) updateData.academicTerm = academicTerm; // Vocational: academic terms not used
   if (duration !== undefined) updateData.duration = duration;
   if (examDate !== undefined) updateData.examDate = parsedExamDate;
   if (examTime !== undefined) updateData.examTime = examTime;
