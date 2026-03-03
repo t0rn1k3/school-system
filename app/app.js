@@ -31,17 +31,13 @@ app.use(
     credentials: true,
   }),
 );
-// Parse JSON - Express 5 compatible (handles missing Content-Type header)
+// Parse JSON - skip multipart so Multer receives raw body for file uploads
 app.use(
   express.json({
     type: (req) => {
-      // Accept JSON if Content-Type is application/json OR if Content-Type is missing/undefined
-      const contentType = req.headers["content-type"];
-      return (
-        contentType === "application/json" ||
-        !contentType ||
-        contentType === undefined
-      );
+      const ct = req.headers["content-type"] || "";
+      if (ct.startsWith("multipart/form-data")) return false;
+      return ct.startsWith("application/json") || !ct;
     },
   }),
 );

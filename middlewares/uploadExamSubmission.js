@@ -45,11 +45,15 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
-const uploadSingle = upload.single("file");
+// Accept multiple field names (file, project, zipFile) - frontend may use any
+const uploadFields = upload.fields([
+  { name: "file", maxCount: 1 },
+  { name: "project", maxCount: 1 },
+  { name: "zipFile", maxCount: 1 },
+]);
 
-// Wrapper to pass multer errors to Express error handler
 module.exports = (req, res, next) => {
-  uploadSingle(req, res, (err) => {
+  uploadFields(req, res, (err) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return next(
@@ -58,7 +62,17 @@ module.exports = (req, res, next) => {
           })
         );
       }
-      return next(err);
+      const e = err instanceof Error ? err : new Error(String(err));
+      e.statusCode = 400;
+      return next(e);
+    }
+    // Normalize: put first uploaded file into req.file for controller compatibility
+    if (req.files) {
+      const f =
+        req.files["file"]?.[0] ||
+        req.files["project"]?.[0] ||
+        req.files["zipFile"]?.[0];
+      if (f) req.file = f;
     }
     next();
   });

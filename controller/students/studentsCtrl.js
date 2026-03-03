@@ -748,7 +748,8 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({
       status: "failed",
-      message: "No file uploaded. Please upload a .zip file.",
+      message:
+        "No file uploaded. Send as multipart/form-data with field name 'file', 'project', or 'zipFile'. Use FormData and append the file.",
     });
   }
 
