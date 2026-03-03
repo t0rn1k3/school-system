@@ -39,6 +39,45 @@ const moduleSchema = new Schema(
       type: Number,
       default: 0,
     },
+    // Vocational curriculum fields
+    code: {
+      type: String,
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ["professional", "commonProfessional", "general", "integratedGeneral"],
+      default: "professional",
+    },
+    contactHours: {
+      type: Number,
+      default: 0,
+    },
+    independentHours: {
+      type: Number,
+      default: 0,
+    },
+    assessmentHours: {
+      type: Number,
+      default: 0,
+    },
+    durationWeeks: {
+      type: Number,
+      default: 0,
+    },
+    credits: {
+      type: Number,
+      default: 0,
+    },
+    startWeek: {
+      type: Number,
+      default: 1,
+    },
+    weeklyOverrides: {
+      type: Map,
+      of: Number,
+      default: () => new Map(),
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "Admin",

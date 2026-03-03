@@ -31,6 +31,8 @@ studentRouter.post(
 
 studentRouter.post("/login", studentLoginCtrl);
 studentRouter.get("/profile", isStudentLogin, isStudent, getStudentProfileCtrl);
+// GET /api/v1/students (admin list) and GET /api/v1/students/admin - same handler
+studentRouter.get("/", isLogin, isAdmin, getStudentsCtrl);
 studentRouter.get("/admin", isLogin, isAdmin, getStudentsCtrl);
 studentRouter.get("/:studentId/admin", isLogin, isAdmin, getSingleStudentCtrl);
 studentRouter.get(

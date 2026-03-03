@@ -1,6 +1,10 @@
 const AsyncHandler = require("express-async-handler");
 const Module = require("../../model/Academic/Module");
 const Program = require("../../model/Academic/Program");
+const {
+  distributeHoursEvenly,
+  validateWeeklyOverrides,
+} = require("../../utils/curriculumUtils");
 
 //@desc Create module
 //@route POST /api/v1/modules
@@ -14,7 +18,23 @@ exports.createModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, program, criteria, order, teachers } = req.body;
+  const {
+    name,
+    description,
+    program,
+    criteria,
+    order,
+    teachers,
+    code,
+    type,
+    contactHours,
+    independentHours,
+    assessmentHours,
+    durationWeeks,
+    credits,
+    startWeek,
+    weeklyOverrides: weeklyOverridesInput,
+  } = req.body;
 
   if (!name || !description || !program) {
     return res.status(400).json({
@@ -58,6 +78,44 @@ exports.createModule = AsyncHandler(async (req, res) => {
     ? teachers.filter((t) => t)
     : [];
 
+  const contact = Number(contactHours) || 0;
+  const independent = Number(independentHours) || 0;
+  const assessment = Number(assessmentHours) || 0;
+  const weeks = Number(durationWeeks) || 0;
+  const start = Number(startWeek) || 1;
+
+  let weeklyOverridesMap = new Map();
+  if (weeklyOverridesInput && typeof weeklyOverridesInput === "object") {
+    const plain =
+      weeklyOverridesInput instanceof Map
+        ? Object.fromEntries(weeklyOverridesInput)
+        : weeklyOverridesInput;
+    const validation = validateWeeklyOverrides({
+      contactHours: contact,
+      assessmentHours: assessment,
+      durationWeeks: weeks,
+      startWeek: start,
+      weeklyOverrides: plain,
+    });
+    if (!validation.valid) {
+      return res.status(400).json({
+        status: "failed",
+        message: validation.message,
+      });
+    }
+    Object.entries(plain).forEach(([k, v]) => {
+      weeklyOverridesMap.set(String(k), Number(v) || 0);
+    });
+  } else if (contact + assessment > 0 && weeks > 0) {
+    const dist = distributeHoursEvenly(contact + assessment, weeks, start);
+    Object.entries(dist).forEach(([k, v]) => {
+      weeklyOverridesMap.set(String(k), v);
+    });
+  }
+
+  const validTypes = ["professional", "commonProfessional", "general", "integratedGeneral"];
+  const moduleType = validTypes.includes(type) ? type : "professional";
+
   const moduleCreated = await Module.create({
     name,
     description,
@@ -65,6 +123,15 @@ exports.createModule = AsyncHandler(async (req, res) => {
     criteria: normalizedCriteria,
     order: typeof order === "number" ? order : 0,
     teachers: teachersArray,
+    code: code || undefined,
+    type: moduleType,
+    contactHours: contact,
+    independentHours: independent,
+    assessmentHours: assessment,
+    durationWeeks: weeks,
+    credits: Number(credits) || 0,
+    startWeek: start,
+    weeklyOverrides: weeklyOverridesMap,
     createdBy: req.userAuth._id,
   });
 
@@ -146,9 +213,24 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, criteria, order, teachers } = req.body;
+  const {
+    name,
+    description,
+    criteria,
+    order,
+    teachers,
+    code,
+    type,
+    contactHours,
+    independentHours,
+    assessmentHours,
+    durationWeeks,
+    credits,
+    startWeek,
+    weeklyOverrides: weeklyOverridesInput,
+  } = req.body;
 
-  const existingModule = await Module.findById(req.params.id).select("program");
+  const existingModule = await Module.findById(req.params.id);
   if (!existingModule) {
     return res.status(404).json({
       status: "failed",
@@ -171,6 +253,27 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     }
   }
 
+  if (weeklyOverridesInput !== undefined && weeklyOverridesInput !== null) {
+    const moduleForValidation = {
+      ...existingModule.toObject(),
+      contactHours: contactHours !== undefined ? Number(contactHours) : existingModule.contactHours,
+      assessmentHours: assessmentHours !== undefined ? Number(assessmentHours) : existingModule.assessmentHours,
+      durationWeeks: durationWeeks !== undefined ? Number(durationWeeks) : existingModule.durationWeeks,
+      startWeek: startWeek !== undefined ? Number(startWeek) : existingModule.startWeek,
+      weeklyOverrides:
+        weeklyOverridesInput instanceof Map
+          ? Object.fromEntries(weeklyOverridesInput)
+          : weeklyOverridesInput,
+    };
+    const validation = validateWeeklyOverrides(moduleForValidation);
+    if (!validation.valid) {
+      return res.status(400).json({
+        status: "failed",
+        message: validation.message,
+      });
+    }
+  }
+
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
@@ -185,6 +288,28 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   }
   if (teachers !== undefined && Array.isArray(teachers)) {
     updateData.teachers = teachers.filter((t) => t);
+  }
+  if (code !== undefined) updateData.code = code || null;
+  if (type !== undefined) {
+    const validTypes = ["professional", "commonProfessional", "general", "integratedGeneral"];
+    updateData.type = validTypes.includes(type) ? type : "professional";
+  }
+  if (contactHours !== undefined) updateData.contactHours = Number(contactHours) || 0;
+  if (independentHours !== undefined) updateData.independentHours = Number(independentHours) || 0;
+  if (assessmentHours !== undefined) updateData.assessmentHours = Number(assessmentHours) || 0;
+  if (durationWeeks !== undefined) updateData.durationWeeks = Number(durationWeeks) || 0;
+  if (credits !== undefined) updateData.credits = Number(credits) || 0;
+  if (startWeek !== undefined) updateData.startWeek = Number(startWeek) || 1;
+  if (weeklyOverridesInput !== undefined && weeklyOverridesInput !== null) {
+    const map = new Map();
+    const plain =
+      weeklyOverridesInput instanceof Map
+        ? Object.fromEntries(weeklyOverridesInput)
+        : weeklyOverridesInput;
+    Object.entries(plain).forEach(([k, v]) => {
+      map.set(String(k), Number(v) || 0);
+    });
+    updateData.weeklyOverrides = map;
   }
   updateData.updatedBy = req.userAuth._id;
 

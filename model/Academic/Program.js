@@ -22,6 +22,15 @@ const ProgramSchema = new Schema(
       type: Number,
       required: false,
     },
+    // Vocational: start date for curriculum week labels
+    startDate: {
+      type: Date,
+      required: false,
+    },
+    // Vocational: holiday dates excluded from schedule (YYYY-MM-DD)
+    holidays: [{
+      type: String,
+    }],
     // created automatically
     //CSFTY
     code: {
