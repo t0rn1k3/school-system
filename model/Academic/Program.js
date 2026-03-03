@@ -72,6 +72,13 @@ const ProgramSchema = new Schema(
         ref: "ClassLevel",
       },
     ],
+    // Vocational: modules (e.g. HTML/CSS, JavaScript) - student must pass all to graduate
+    modules: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Module",
+      },
+    ],
   },
   { timestamps: true },
 );

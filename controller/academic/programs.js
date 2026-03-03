@@ -72,7 +72,7 @@ exports.getProgram = AsyncHandler(async (req, res) => {
   const program = await Program.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+  }).populate("modules");
 
   if (!program) {
     return res.status(404).json({
