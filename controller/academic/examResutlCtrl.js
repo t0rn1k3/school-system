@@ -508,54 +508,113 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { score, totalMark, status, remarks } = req.body;
+  const { score, totalMark, status, remarks, criterionResults } = req.body;
+  const exam = examResult.exam;
+  const passCriteriaType = exam?.passCriteriaType || "percentage";
 
-  if (score === undefined || !Number.isFinite(Number(score))) {
-    return res.status(400).json({
-      status: "failed",
-      message: "score is required and must be a number",
-    });
-  }
-
-  const total =
-    totalMark !== undefined ? Number(totalMark) : examResult.totalMark || 100;
-  if (!Number.isFinite(total) || total <= 0) {
-    return res.status(400).json({
-      status: "failed",
-      message: "totalMark must be a positive number",
-    });
-  }
-
-  const numScore = Number(score);
-  const grade = total > 0 ? (numScore / total) * 100 : 0;
-  const passMark = examResult.passMark ?? 50;
-  const computedStatus = grade >= passMark ? "Passed" : "Failed";
-  const finalStatus =
-    status && ["Passed", "Failed", "Pending"].includes(status)
-      ? status
-      : computedStatus;
-
+  let updatePayload = { isFullyGraded: true };
+  let finalStatus;
   let finalRemarks = "Poor";
+  let numScore;
+  let total;
+  let grade;
+
   if (
-    remarks &&
-    ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)
+    passCriteriaType === "all-criteria" &&
+    criterionResults &&
+    Array.isArray(criterionResults) &&
+    criterionResults.length > 0
   ) {
-    finalRemarks = remarks;
-  } else if (grade >= 80) finalRemarks = "Excellent";
-  else if (grade >= 70) finalRemarks = "Very Good";
-  else if (grade >= 60) finalRemarks = "Good";
-  else if (grade >= 50) finalRemarks = "Average";
+    // All-criteria mode: status = Passed only if ALL criterionResults.passed === true
+    const normalizedCriteria = criterionResults.map((c) => ({
+      criterionId: String(c.criterionId || c.id || ""),
+      criterionName: String(c.criterionName || c.name || ""),
+      passed: Boolean(c.passed),
+      notes: c.notes ? String(c.notes) : undefined,
+    }));
+
+    const allPassed = normalizedCriteria.every((c) => c.passed);
+    finalStatus = allPassed ? "Passed" : "Failed";
+
+    numScore = normalizedCriteria.filter((c) => c.passed).length;
+    total = normalizedCriteria.length;
+    grade = total > 0 ? (numScore / total) * 100 : 0;
+
+    if (grade >= 80) finalRemarks = "Excellent";
+    else if (grade >= 70) finalRemarks = "Very Good";
+    else if (grade >= 60) finalRemarks = "Good";
+    else if (grade >= 50) finalRemarks = "Average";
+
+    updatePayload = {
+      ...updatePayload,
+      criterionResults: normalizedCriteria,
+      score: numScore,
+      totalMark: total,
+      grade,
+      status: finalStatus,
+      remarks:
+        remarks && ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)
+          ? remarks
+          : finalRemarks,
+    };
+  } else {
+    // Percentage mode: use score/totalMark
+    if (score === undefined || !Number.isFinite(Number(score))) {
+      return res.status(400).json({
+        status: "failed",
+        message: "score is required and must be a number",
+      });
+    }
+
+    const totalVal =
+      totalMark !== undefined ? Number(totalMark) : examResult.totalMark || 100;
+    if (!Number.isFinite(totalVal) || totalVal <= 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "totalMark must be a positive number",
+      });
+    }
+
+    numScore = Number(score);
+    grade = totalVal > 0 ? (numScore / totalVal) * 100 : 0;
+    const passMark = examResult.passMark ?? 50;
+    const computedStatus = grade >= passMark ? "Passed" : "Failed";
+    finalStatus =
+      status && ["Passed", "Failed", "Pending"].includes(status)
+        ? status
+        : computedStatus;
+
+    if (
+      remarks &&
+      ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)
+    ) {
+      finalRemarks = remarks;
+    } else if (grade >= 80) finalRemarks = "Excellent";
+    else if (grade >= 70) finalRemarks = "Very Good";
+    else if (grade >= 60) finalRemarks = "Good";
+    else if (grade >= 50) finalRemarks = "Average";
+
+    updatePayload = {
+      ...updatePayload,
+      score: Math.min(numScore, totalVal),
+      grade,
+      totalMark: totalVal,
+      status: finalStatus,
+      remarks: finalRemarks,
+    };
+    if (criterionResults && Array.isArray(criterionResults)) {
+      updatePayload.criterionResults = criterionResults.map((c) => ({
+        criterionId: String(c.criterionId || c.id || ""),
+        criterionName: String(c.criterionName || c.name || ""),
+        passed: Boolean(c.passed),
+        notes: c.notes ? String(c.notes) : undefined,
+      }));
+    }
+  }
 
   const updated = await ExamResult.findByIdAndUpdate(
     req.params.id,
-    {
-      score: Math.min(numScore, total),
-      grade,
-      totalMark: total,
-      status: finalStatus,
-      remarks: finalRemarks,
-      isFullyGraded: true,
-    },
+    updatePayload,
     { new: true },
   )
     .populate("exam")

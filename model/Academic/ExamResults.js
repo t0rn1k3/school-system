@@ -66,6 +66,16 @@ const examResultSchema = new Schema(
     // true when all questions (including open-ended) are graded
     isFullyGraded: { type: Boolean, default: false },
 
+    // For passCriteriaType "all-criteria": per-criterion pass/fail
+    criterionResults: [
+      {
+        criterionId: { type: String, required: true },
+        criterionName: { type: String, required: true },
+        passed: { type: Boolean, required: true },
+        notes: { type: String },
+      },
+    ],
+
     // For project-submission exams: uploaded file reference
     submittedFile: {
       filename: { type: String }, // stored filename on disk
