@@ -559,6 +559,14 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  if (examFound.examType === "project-submission") {
+    return res.status(400).json({
+      status: "failed",
+      message:
+        "This is a project-submission exam. Please use the upload form to submit your ZIP file.",
+    });
+  }
+
   //get quetions
   const questions = examFound?.questions;
   if (!questions) {
@@ -692,5 +700,104 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   res.status(200).json({
     status: "success",
     data: "you have submitted your exam successfully, you can now view your result in the result section",
+  });
+});
+
+//@desc Student submit project (ZIP) for project-submission exam
+//@route POST /api/v1/students/exams/:examId/submit-project
+//@access Private students only (multipart/form-data, field: file)
+
+exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
+  const examId = req.params.examId;
+
+  const studentFound = await Student.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
+  if (!studentFound) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Student not found",
+    });
+  }
+
+  if (studentFound.isSuspended || studentFound.isWithdrawn) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You are suspended or withdrawn",
+    });
+  }
+
+  const examFound = await Exam.findById(examId)
+    .populate("academicTerm")
+    .populate("academicYear");
+  if (!examFound || examFound.isDeleted) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam not found",
+    });
+  }
+
+  if (examFound.examType !== "project-submission") {
+    return res.status(400).json({
+      status: "failed",
+      message: "This exam is not a project-submission type",
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      status: "failed",
+      message: "No file uploaded. Please upload a .zip file.",
+    });
+  }
+
+  const alreadySubmitted = await ExamResult.findOne({
+    studentId: studentFound.studentId,
+    exam: examFound._id,
+  });
+  if (alreadySubmitted) {
+    return res.status(400).json({
+      status: "failed",
+      message: "You have already submitted a project for this exam",
+    });
+  }
+
+  const passMark = examFound.passMark ?? 50;
+  const totalMark = examFound.totalMark ?? 100;
+
+  const examResult = await ExamResult.create({
+    studentId: studentFound.studentId,
+    exam: examFound._id,
+    score: 0,
+    grade: 0,
+    passMark,
+    totalMark,
+    answeredQuestions: [],
+    status: "Pending",
+    remarks: "Poor",
+    classLevel: examFound.classLevel,
+    yearGroup: examFound.yearGroup,
+    academicYear: examFound.academicYear,
+    academicTerm: examFound.academicTerm,
+    isPublished: false,
+    isFullyGraded: false,
+    submittedFile: {
+      filename: req.file.filename,
+      path: req.file.path,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype || "application/zip",
+      size: req.file.size,
+      uploadedAt: new Date(),
+    },
+  });
+
+  studentFound.examResults.push(examResult._id);
+  await studentFound.save();
+
+  res.status(201).json({
+    status: "success",
+    message: "Project submitted successfully. Wait for your teacher to grade it.",
+    data: { examResultId: examResult._id },
   });
 });

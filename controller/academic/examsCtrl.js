@@ -78,6 +78,14 @@ exports.createExam = AsyncHandler(async (req, res) => {
     });
   }
 
+  const validExamTypes = ["Quiz", "project-submission"];
+  if (!validExamTypes.includes(examType)) {
+    return res.status(400).json({
+      status: "failed",
+      message: `examType must be one of: ${validExamTypes.join(", ")}`,
+    });
+  }
+
   //find the teacher
   const teacherFound = await Teacher.findOne({
     _id: req.userAuth._id,
@@ -262,6 +270,16 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       return res.status(400).json({
         status: "failed",
         message: "totalMark must be a positive number",
+      });
+    }
+  }
+
+  if (examType !== undefined) {
+    const validExamTypes = ["Quiz", "project-submission"];
+    if (!validExamTypes.includes(examType)) {
+      return res.status(400).json({
+        status: "failed",
+        message: `examType must be one of: ${validExamTypes.join(", ")}`,
       });
     }
   }

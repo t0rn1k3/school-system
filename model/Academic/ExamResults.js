@@ -61,6 +61,16 @@ const examResultSchema = new Schema(
     // true when all questions (including open-ended) are graded
     isFullyGraded: { type: Boolean, default: false },
 
+    // For project-submission exams: uploaded file reference
+    submittedFile: {
+      filename: { type: String }, // stored filename on disk
+      path: { type: String }, // full path
+      originalName: { type: String },
+      mimeType: { type: String, default: "application/zip" },
+      size: { type: Number },
+      uploadedAt: { type: Date, default: Date.now },
+    },
+
     classLevel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ClassLevel",

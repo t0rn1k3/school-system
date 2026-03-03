@@ -57,6 +57,8 @@ const examSchema = new Schema(
       type: String,
       required: true,
       default: "Quiz",
+      // Quiz = questions; project-submission = student uploads ZIP file
+      enum: ["Quiz", "project-submission"],
     },
     examStatus: {
       type: String,

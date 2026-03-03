@@ -20,6 +20,7 @@ const {
 } = require("../../controller/staff/adminCtrl");
 const {
   adminGetAllExamResultsCtrl,
+  adminDownloadProjectCtrl,
 } = require("../../controller/academic/examResutlCtrl");
 const { getExams, getExam } = require("../../controller/academic/examsCtrl");
 const {
@@ -47,6 +48,12 @@ adminRouter.get("/", isLogin, getAdminsCtrl);
 adminRouter.get("/profile", isLogin, isAdmin, getAdminProfileCtrl);
 
 adminRouter.get("/exam-results", isLogin, isAdmin, adminGetAllExamResultsCtrl);
+adminRouter.get(
+  "/exam-results/:id/download",
+  isLogin,
+  isAdmin,
+  adminDownloadProjectCtrl,
+);
 
 adminRouter.get("/exams", isLogin, isAdmin, getExams);
 adminRouter.get("/exams/:id", isLogin, isAdmin, getExam);

@@ -1,4 +1,6 @@
 const AsyncHandler = require("express-async-handler");
+const path = require("path");
+const fs = require("fs");
 const ExamResult = require("../../model/Academic/ExamResults");
 const Exam = require("../../model/Academic/Exam");
 const Student = require("../../model/Academic/Student");
@@ -389,5 +391,164 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
     status: "success",
     message: "Exam result published successfully. Students can now view it.",
     data: publishResult,
+  });
+});
+
+//@desc teacher download project submission
+//@route GET /api/v1/teachers/exam-results/:id/download
+//@access Private teachers only
+
+exports.teacherDownloadProjectCtrl = AsyncHandler(async (req, res) => {
+  const teacherId = req.userAuth._id;
+  const examResult = await ExamResult.findById(req.params.id).populate("exam");
+
+  if (!examResult || !examResult.submittedFile?.path) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam result or project file not found",
+    });
+  }
+
+  const exam = examResult.exam;
+  if (!exam || exam.createdBy?.toString() !== teacherId.toString()) {
+    return res.status(403).json({
+      status: "failed",
+      message: "You can only download projects for exams you created",
+    });
+  }
+
+  const filePath = path.isAbsolute(examResult.submittedFile.path)
+    ? examResult.submittedFile.path
+    : path.join(process.cwd(), examResult.submittedFile.path);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      status: "failed",
+      message: "File no longer exists on server",
+    });
+  }
+
+  const downloadName =
+    examResult.submittedFile.originalName || examResult.submittedFile.filename || "project.zip";
+  res.download(filePath, downloadName);
+});
+
+//@desc admin download project submission
+//@route GET /api/v1/admins/exam-results/:id/download
+//@access Private admins only
+
+exports.adminDownloadProjectCtrl = AsyncHandler(async (req, res) => {
+  const examResult = await ExamResult.findById(req.params.id);
+
+  if (!examResult || !examResult.submittedFile?.path) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam result or project file not found",
+    });
+  }
+
+  const filePath = path.isAbsolute(examResult.submittedFile.path)
+    ? examResult.submittedFile.path
+    : path.join(process.cwd(), examResult.submittedFile.path);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      status: "failed",
+      message: "File no longer exists on server",
+    });
+  }
+
+  const downloadName =
+    examResult.submittedFile.originalName || examResult.submittedFile.filename || "project.zip";
+  res.download(filePath, downloadName);
+});
+
+//@desc teacher grade project submission
+//@route PUT /api/v1/teachers/exam-results/:id/grade-project
+//@access Private teachers only
+
+exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
+  const teacherId = req.userAuth._id;
+  const examResult = await ExamResult.findById(req.params.id).populate("exam");
+
+  if (!examResult) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Exam result not found",
+    });
+  }
+
+  if (!examResult.submittedFile?.path) {
+    return res.status(400).json({
+      status: "failed",
+      message: "This is not a project submission. Use the regular grade endpoint.",
+    });
+  }
+
+  if (
+    !examResult.exam ||
+    examResult.exam.createdBy?.toString() !== teacherId.toString()
+  ) {
+    return res.status(403).json({
+      status: "failed",
+      message: "You can only grade project submissions for exams you created",
+    });
+  }
+
+  const { score, totalMark, status, remarks } = req.body;
+
+  if (score === undefined || !Number.isFinite(Number(score))) {
+    return res.status(400).json({
+      status: "failed",
+      message: "score is required and must be a number",
+    });
+  }
+
+  const total = totalMark !== undefined ? Number(totalMark) : (examResult.totalMark || 100);
+  if (!Number.isFinite(total) || total <= 0) {
+    return res.status(400).json({
+      status: "failed",
+      message: "totalMark must be a positive number",
+    });
+  }
+
+  const numScore = Number(score);
+  const grade = total > 0 ? (numScore / total) * 100 : 0;
+  const passMark = examResult.passMark ?? 50;
+  const computedStatus = grade >= passMark ? "Passed" : "Failed";
+  const finalStatus = status && ["Passed", "Failed", "Pending"].includes(status)
+    ? status
+    : computedStatus;
+
+  let finalRemarks = "Poor";
+  if (remarks && ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)) {
+    finalRemarks = remarks;
+  } else if (grade >= 80) finalRemarks = "Excellent";
+  else if (grade >= 70) finalRemarks = "Very Good";
+  else if (grade >= 60) finalRemarks = "Good";
+  else if (grade >= 50) finalRemarks = "Average";
+
+  const updated = await ExamResult.findByIdAndUpdate(
+    req.params.id,
+    {
+      score: Math.min(numScore, total),
+      grade,
+      totalMark: total,
+      status: finalStatus,
+      remarks: finalRemarks,
+      isFullyGraded: true,
+    },
+    { new: true }
+  )
+    .populate("exam")
+    .populate("classLevel")
+    .populate("yearGroup")
+    .populate("academicTerm")
+    .populate("academicYear");
+
+  res.status(200).json({
+    status: "success",
+    message: "Project graded successfully",
+    data: updated,
   });
 });

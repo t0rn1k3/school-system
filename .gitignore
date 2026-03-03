@@ -6,6 +6,9 @@
 # Dependencies
 node_modules/
 
+# Uploads (exam project submissions)
+uploads/
+
 # Logs
 *.log
 npm-debug.log*

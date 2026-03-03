@@ -14,6 +14,8 @@ const {
   teacherGetExamResultCtrl,
   teacherGradeExamResultCtrl,
   teacherPublishExamResultCtrl,
+  teacherDownloadProjectCtrl,
+  teacherGradeProjectCtrl,
 } = require("../../controller/academic/examResutlCtrl");
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
@@ -44,6 +46,12 @@ teacherRouter.get(
   isTeacher,
   teacherGetExamResultCtrl,
 );
+teacherRouter.get(
+  "/exam-results/:id/download",
+  isTeacherLogin,
+  isTeacher,
+  teacherDownloadProjectCtrl,
+);
 teacherRouter.put(
   "/exam-results/:id/grade",
   isTeacherLogin,
@@ -55,6 +63,12 @@ teacherRouter.put(
   isTeacherLogin,
   isTeacher,
   teacherPublishExamResultCtrl,
+);
+teacherRouter.put(
+  "/exam-results/:id/grade-project",
+  isTeacherLogin,
+  isTeacher,
+  teacherGradeProjectCtrl,
 );
 teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, getSingleTeacherCtrl);
 // Teacher updates own profile

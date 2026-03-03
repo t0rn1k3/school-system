@@ -17,7 +17,9 @@ const {
   studentWriteExamCtrl,
   getStudentExamsCtrl,
   getStudentExamCtrl,
+  submitProjectCtrl,
 } = require("../../controller/students/studentsCtrl");
+const uploadExamSubmission = require("../../middlewares/uploadExamSubmission");
 
 studentRouter.post(
   "/admin/register",
@@ -37,6 +39,13 @@ studentRouter.post(
   isStudentLogin,
   isStudent,
   studentWriteExamCtrl,
+);
+studentRouter.post(
+  "/exams/:examId/submit-project",
+  isStudentLogin,
+  isStudent,
+  uploadExamSubmission,
+  submitProjectCtrl,
 );
 // Student updates own profile
 studentRouter.put(
