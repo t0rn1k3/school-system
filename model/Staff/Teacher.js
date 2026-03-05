@@ -83,6 +83,13 @@ const teacherSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "YearGroup",
     },
+    // Vocational: teacher can teach multiple year groups (e.g. 101, 102)
+    yearGroups: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "YearGroup",
+      },
+    ],
     academicYear: {
       type: String,
     },

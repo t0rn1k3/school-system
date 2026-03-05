@@ -118,7 +118,8 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
   }
   const TeacherQuery = Teacher.find(filter)
     .populate("programs", "name code")
-    .populate("modules", "name description");
+    .populate("modules", "name description")
+    .populate("yearGroups", "name");
   //convert query strings to numbers
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
@@ -170,7 +171,8 @@ exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
     isDeleted: { $ne: true },
   })
     .populate("programs", "name code")
-    .populate("modules", "name description");
+    .populate("modules", "name description")
+    .populate("yearGroups", "name");
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -195,7 +197,8 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
   })
     .select("-password -createdAt -updatedAt")
     .populate("programs", "name code")
-    .populate("modules", "name description");
+    .populate("modules", "name description")
+    .populate("yearGroups", "name");
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -340,6 +343,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     classLevel,
     academicYear,
     yearGroup,
+    yearGroups,
     subject,
     name,
     email,
@@ -379,6 +383,9 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   if (classLevel !== undefined) updateData.classLevel = classLevel;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
   if (yearGroup !== undefined) updateData.yearGroup = yearGroup;
+  if (yearGroups !== undefined && Array.isArray(yearGroups)) {
+    updateData.yearGroups = yearGroups.filter((g) => g);
+  }
   if (subject !== undefined) updateData.subject = subject;
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) {
@@ -463,7 +470,8 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
 
   const teacherWithPopulated = await Teacher.findById(teacherId)
     .populate("programs", "name code")
-    .populate("modules", "name description");
+    .populate("modules", "name description")
+    .populate("yearGroups", "name");
 
   res.status(200).json({
     status: "success",
