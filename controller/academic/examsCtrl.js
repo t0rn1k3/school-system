@@ -1,5 +1,6 @@
 const AsyncHandler = require("express-async-handler");
 const Exam = require("../../model/Academic/Exam");
+const Module = require("../../model/Academic/Module");
 const Teacher = require("../../model/Staff/Teacher");
 
 //@desc create exam
@@ -101,6 +102,39 @@ exports.createExam = AsyncHandler(async (req, res) => {
     });
   }
 
+  const validScopeTypes = ["single-lo", "multiple-los", "all-los"];
+  const finalScopeType =
+    scopeType && validScopeTypes.includes(scopeType) ? scopeType : "all-los";
+  const loIds = Array.isArray(learningOutcomeIds) ? learningOutcomeIds.filter(Boolean).map(String) : [];
+
+  if (finalScopeType === "single-lo" || finalScopeType === "multiple-los") {
+    if (!module) {
+      return res.status(400).json({
+        status: "failed",
+        message: "module is required when scopeType is single-lo or multiple-los",
+      });
+    }
+    if (loIds.length === 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "learningOutcomeIds is required when scopeType is single-lo or multiple-los",
+      });
+    }
+    {
+      const moduleDoc = await Module.findById(module).select("learningOutcomes");
+      const moduleLoIds = new Set(
+        (moduleDoc?.learningOutcomes || []).map((lo) => String(lo.id))
+      );
+      const invalid = loIds.filter((id) => !moduleLoIds.has(id));
+      if (invalid.length > 0) {
+        return res.status(400).json({
+          status: "failed",
+          message: `learningOutcomeIds not found in module: ${invalid.join(", ")}`,
+        });
+      }
+    }
+  }
+
   //find the teacher
   const teacherFound = await Teacher.findOne({
     _id: req.userAuth._id,
@@ -179,6 +213,8 @@ exports.createExam = AsyncHandler(async (req, res) => {
     ...(passMark !== undefined && { passMark: Number(passMark) }),
     ...(totalMark !== undefined && { totalMark: Number(totalMark) }),
     ...(passCriteriaType && { passCriteriaType }),
+    scopeType: finalScopeType,
+    learningOutcomeIds: finalScopeType === "all-los" ? [] : loIds,
     createdBy: req.userAuth._id,
   });
 
@@ -223,7 +259,9 @@ exports.getExam = AsyncHandler(async (req, res) => {
   if (req.userAuth && req.userAuth.role === "teacher") {
     filter.createdBy = req.userAuth._id;
   }
-  const exam = await Exam.findOne(filter).populate("questions");
+  const exam = await Exam.findOne(filter)
+    .populate("questions")
+    .populate("module");
 
   if (!exam) {
     return res.status(404).json({
@@ -268,6 +306,8 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     passMark,
     totalMark,
     passCriteriaType,
+    scopeType,
+    learningOutcomeIds,
   } = req.body;
 
   // Validate passMark (0-100) if provided
@@ -306,6 +346,47 @@ exports.updateExam = AsyncHandler(async (req, res) => {
         status: "failed",
         message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
       });
+    }
+  }
+
+  const validScopeTypes = ["single-lo", "multiple-los", "all-los"];
+  if (scopeType !== undefined) {
+    if (!validScopeTypes.includes(scopeType)) {
+      return res.status(400).json({
+        status: "failed",
+        message: `scopeType must be one of: ${validScopeTypes.join(", ")}`,
+      });
+    }
+  }
+  const loIds = Array.isArray(learningOutcomeIds) ? learningOutcomeIds.filter(Boolean).map(String) : [];
+  const existingExam = await Exam.findById(req.params.id).select("scopeType module");
+  const scopeForValidation = scopeType !== undefined ? scopeType : existingExam?.scopeType || "all-los";
+  if (scopeForValidation === "single-lo" || scopeForValidation === "multiple-los") {
+    const modId = module !== undefined ? module : existingExam?.module;
+    if (!modId) {
+      return res.status(400).json({
+        status: "failed",
+        message: "module is required when scopeType is single-lo or multiple-los",
+      });
+    }
+    if (scopeType !== undefined && loIds.length === 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "learningOutcomeIds is required when scopeType is single-lo or multiple-los",
+      });
+    }
+    if (loIds.length > 0) {
+      const moduleDoc = await Module.findById(modId).select("learningOutcomes");
+      const moduleLoIds = new Set(
+        (moduleDoc?.learningOutcomes || []).map((lo) => String(lo.id))
+      );
+      const invalid = loIds.filter((id) => !moduleLoIds.has(id));
+      if (invalid.length > 0) {
+        return res.status(400).json({
+          status: "failed",
+          message: `learningOutcomeIds not found in module: ${invalid.join(", ")}`,
+        });
+      }
     }
   }
 
@@ -362,6 +443,16 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (subject !== undefined) updateData.subject = subject;
   if (module !== undefined) updateData.module = module;
   if (passCriteriaType !== undefined) updateData.passCriteriaType = passCriteriaType;
+  if (scopeType !== undefined) {
+    updateData.scopeType = scopeType;
+    updateData.learningOutcomeIds = scopeType === "all-los" ? [] : loIds;
+  } else if (learningOutcomeIds !== undefined) {
+    const existing = await Exam.findById(req.params.id).select("scopeType");
+    const st = existing?.scopeType || "all-los";
+    if (st === "single-lo" || st === "multiple-los") {
+      updateData.learningOutcomeIds = loIds;
+    }
+  }
   if (program !== undefined) updateData.program = program;
   // if (academicTerm !== undefined) updateData.academicTerm = academicTerm; // Vocational: academic terms not used
   if (duration !== undefined) updateData.duration = duration;

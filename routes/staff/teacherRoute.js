@@ -24,6 +24,7 @@ const isTeacher = require("../../middlewares/isTeacher");
 const {
   adminUpdateTeacher,
   withdrawTeacherCtrl,
+  getTeacherStudentsCtrl,
 } = require("../../controller/staff/teachersCtrl");
 
 teacherRouter.post(
@@ -36,6 +37,12 @@ teacherRouter.post(
 teacherRouter.post("/login", teacherLoginCtrl);
 teacherRouter.get("/admin", isLogin, isAdmin, getTeachersCtrl);
 teacherRouter.get("/profile", isTeacherLogin, isTeacher, getTeacherProfileCtrl);
+teacherRouter.get(
+  "/students",
+  isTeacherLogin,
+  isTeacher,
+  getTeacherStudentsCtrl,
+);
 // Teacher exam results (must be before /:teacherId)
 teacherRouter.get(
   "/exam-results",

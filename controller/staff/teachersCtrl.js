@@ -4,6 +4,7 @@ const Teacher = require("../../model/Staff/Teacher");
 const Admin = require("../../model/Staff/Admin");
 const Program = require("../../model/Academic/Program");
 const Module = require("../../model/Academic/Module");
+const Student = require("../../model/Academic/Student");
 
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
@@ -212,6 +213,90 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
   });
 });
 
+//@desc get students in teacher's year groups
+//@route GET /api/v1/teachers/students
+//@access Private teachers only
+//@query yearGroup (optional) - filter to single year group (must be in teacher's yearGroups)
+
+exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
+  const teacher = await Teacher.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  })
+    .select("yearGroups")
+    .populate("yearGroups", "name");
+
+  if (!teacher) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Teacher not found",
+    });
+  }
+
+  const teacherYearGroupIds = (teacher.yearGroups || [])
+    .map((g) => (typeof g === "object" ? g?._id : g))
+    .filter(Boolean);
+
+  let allowedYearGroupIds = teacherYearGroupIds;
+
+  const yearGroupFilter = req.query.yearGroup;
+  if (yearGroupFilter) {
+    const filterId = yearGroupFilter.toString();
+    if (!teacherYearGroupIds.some((id) => id.toString() === filterId)) {
+      return res.status(403).json({
+        status: "failed",
+        message: "You can only view students in your assigned year groups",
+      });
+    }
+    allowedYearGroupIds = [filterId];
+  }
+
+  if (allowedYearGroupIds.length === 0) {
+    return res.status(200).json({
+      status: "success",
+      data: [],
+      message: "No year groups assigned. Students will appear when you are assigned to year groups.",
+    });
+  }
+
+  const students = await Student.find({
+    yearGroup: { $in: allowedYearGroupIds },
+    isWithdrawn: { $ne: true },
+  })
+    .select("name studentId yearGroup email")
+    .populate("yearGroup", "name")
+    .sort({ name: 1 });
+
+  const grouped = allowedYearGroupIds.map((ygId) => {
+    const idStr = ygId.toString();
+    const ygName =
+      (teacher.yearGroups || []).find(
+        (g) => (g?._id || g)?.toString() === idStr
+      )?.name || idStr;
+    const groupStudents = students
+      .filter((s) => (s.yearGroup?._id || s.yearGroup)?.toString() === idStr)
+      .map((s) => ({
+        _id: s._id,
+        name: s.name,
+        studentId: s.studentId,
+        email: s.email,
+        yearGroup: s.yearGroup?._id || s.yearGroup,
+        yearGroupName: s.yearGroup?.name,
+      }));
+    return {
+      yearGroup: idStr,
+      yearGroupName: ygName,
+      students: groupStudents,
+    };
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: grouped,
+    message: "Students fetched successfully",
+  });
+});
+
 //@dec update teacher profile
 //@route PUT /api/v1/teachers/:teacherId/update
 //@access Private teachers only
@@ -347,6 +432,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     subject,
     name,
     email,
+    password,
   } = req.body;
   const teacherId = req.params.teacherId; // Fixed: was teacherID (wrong case)
 
@@ -388,6 +474,16 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   }
   if (subject !== undefined) updateData.subject = subject;
   if (name !== undefined) updateData.name = name;
+  if (password !== undefined) {
+    if (typeof password !== "string" || password.trim().length < 6) {
+      return res.status(400).json({
+        status: "failed",
+        message: "Password must be at least 6 characters",
+      });
+    }
+    const salt = await bcrypt.genSalt(10);
+    updateData.password = await bcrypt.hash(password.trim(), salt);
+  }
   if (email !== undefined) {
     // Check if email already exists (if email is being updated)
     const emailExist = await Teacher.findOne({

@@ -16,12 +16,28 @@ const moduleSchema = new Schema(
       ref: "Program",
       required: true,
     },
-    // Criteria: student must pass ALL to pass the module
+    // Legacy: flat criteria (kept for backward compatibility; derive from learningOutcomes when present)
     criteria: [
       {
         id: { type: String, required: true },
         name: { type: String, required: true },
         description: { type: String, default: "" },
+      },
+    ],
+    // Georgian vocational: Learning Outcomes, each with nested criteria
+    learningOutcomes: [
+      {
+        id: { type: String, required: true },
+        order: { type: Number, default: 0 },
+        name: { type: String, required: true },
+        description: { type: String, default: "" },
+        criteria: [
+          {
+            id: { type: String, required: true },
+            name: { type: String, required: true },
+            description: { type: String, default: "" },
+          },
+        ],
       },
     ],
     // Teachers who teach this module (teacher can be in multiple programs/modules)

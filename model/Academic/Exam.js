@@ -44,6 +44,17 @@ const examSchema = new Schema(
       enum: ["percentage", "all-criteria"],
       default: "percentage",
     },
+    // Which Learning Outcomes this exam targets (vocational modules)
+    scopeType: {
+      type: String,
+      enum: ["single-lo", "multiple-los", "all-los"],
+      default: "all-los",
+    },
+    learningOutcomeIds: [
+      {
+        type: String,
+      },
+    ],
 
     // Vocational: academic terms not used - kept optional for compatibility
     academicTerm: {

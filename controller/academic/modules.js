@@ -5,6 +5,10 @@ const {
   distributeHoursEvenly,
   validateWeeklyOverrides,
 } = require("../../utils/curriculumUtils");
+const {
+  normalizeLearningOutcomes,
+  migrateCriteriaToLearningOutcomes,
+} = require("../../utils/learningOutcomesUtils");
 
 //@desc Create module
 //@route POST /api/v1/modules
@@ -23,6 +27,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
     description,
     program,
     criteria,
+    learningOutcomes: learningOutcomesInput,
     order,
     teachers,
     code,
@@ -66,13 +71,31 @@ exports.createModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const normalizedCriteria = Array.isArray(criteria)
-    ? criteria.map((c, i) => ({
-        id: c.id || `c${i + 1}`,
-        name: c.name || "",
-        description: c.description || "",
-      }))
-    : [];
+  let finalLearningOutcomes = [];
+  let finalCriteria = [];
+  if (learningOutcomesInput && Array.isArray(learningOutcomesInput) && learningOutcomesInput.length > 0) {
+    const validation = normalizeLearningOutcomes(learningOutcomesInput);
+    if (!validation.valid) {
+      return res.status(400).json({
+        status: "failed",
+        message: validation.message,
+      });
+    }
+    finalLearningOutcomes = validation.normalized;
+    finalCriteria = finalLearningOutcomes.flatMap((lo) => lo.criteria || []);
+  } else if (Array.isArray(criteria) && criteria.length > 0) {
+    finalLearningOutcomes = migrateCriteriaToLearningOutcomes(criteria);
+    finalCriteria = criteria.map((c, i) => ({
+      id: c.id || `c${i + 1}`,
+      name: c.name || "",
+      description: c.description || "",
+    }));
+  } else {
+    return res.status(400).json({
+      status: "failed",
+      message: "At least one Learning Outcome (with criteria) or legacy criteria is required",
+    });
+  }
 
   const teachersArray = Array.isArray(teachers)
     ? teachers.filter((t) => t)
@@ -120,7 +143,8 @@ exports.createModule = AsyncHandler(async (req, res) => {
     name,
     description,
     program,
-    criteria: normalizedCriteria,
+    criteria: finalCriteria,
+    learningOutcomes: finalLearningOutcomes,
     order: typeof order === "number" ? order : 0,
     teachers: teachersArray,
     code: code || undefined,
@@ -217,6 +241,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     name,
     description,
     criteria,
+    learningOutcomes: learningOutcomesInput,
     order,
     teachers,
     code,
@@ -279,7 +304,25 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (description !== undefined) updateData.description = description;
   if (order !== undefined && Number.isFinite(Number(order)))
     updateData.order = Number(order);
-  if (criteria !== undefined && Array.isArray(criteria)) {
+  if (learningOutcomesInput !== undefined) {
+    if (!Array.isArray(learningOutcomesInput) || learningOutcomesInput.length === 0) {
+      return res.status(400).json({
+        status: "failed",
+        message: "At least one Learning Outcome is required",
+      });
+    }
+    const validation = normalizeLearningOutcomes(learningOutcomesInput);
+    if (!validation.valid) {
+      return res.status(400).json({
+        status: "failed",
+        message: validation.message,
+      });
+    }
+    updateData.learningOutcomes = validation.normalized;
+    updateData.criteria = validation.normalized.flatMap((lo) => lo.criteria || []);
+  } else if (criteria !== undefined && Array.isArray(criteria)) {
+    const migrated = migrateCriteriaToLearningOutcomes(criteria);
+    updateData.learningOutcomes = migrated;
     updateData.criteria = criteria.map((c, i) => ({
       id: c.id || `c${i + 1}`,
       name: c.name || "",

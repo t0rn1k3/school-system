@@ -1,8 +1,10 @@
 const AsyncHandler = require("express-async-handler");
+const { getEffectiveCriteriaForExam } = require("../../utils/learningOutcomesUtils");
 const path = require("path");
 const fs = require("fs");
 const ExamResult = require("../../model/Academic/ExamResults");
 const Exam = require("../../model/Academic/Exam");
+const Module = require("../../model/Academic/Module");
 const Student = require("../../model/Academic/Student");
 const { checkAndGraduateStudent } = require("../../utils/graduationHelper");
 
@@ -212,7 +214,10 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
   const examResult = await ExamResult.findById(req.params.id)
     .populate({
       path: "exam",
-      populate: { path: "questions" },
+      populate: [
+        { path: "questions" },
+        { path: "module" },
+      ],
     })
     .populate("student", "name")
     .populate("classLevel")
@@ -235,10 +240,26 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
+  let effectiveCriteria = [];
+  if (
+    exam?.passCriteriaType === "all-criteria" &&
+    exam?.module
+  ) {
+    const moduleDoc = typeof exam.module === "object"
+      ? exam.module
+      : await Module.findById(exam.module);
+    effectiveCriteria = getEffectiveCriteriaForExam(moduleDoc || {}, exam);
+  }
+
+  const data = examResult.toObject ? examResult.toObject() : { ...examResult };
+  if (effectiveCriteria.length > 0) {
+    data.effectiveCriteria = effectiveCriteria;
+  }
+
   res.status(200).json({
     status: "success",
     message: "Exam result fetched successfully",
-    data: examResult,
+    data,
   });
 });
 
