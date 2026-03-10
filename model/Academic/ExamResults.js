@@ -56,8 +56,22 @@ const examResultSchema = new Schema(
         questionId: { type: Schema.Types.ObjectId, ref: "Question" },
         correctAnswer: { type: String },
         studentAnswer: { type: String },
+        // For structured types (gap-fill, matching, etc.): array/object. Fallback: studentAnswer
+        studentAnswerPayload: { type: Schema.Types.Mixed },
         isCorrect: { type: Boolean }, // null for open-ended until teacher grades
-        questionType: { type: String, enum: ["multiple-choice", "open-ended"] },
+        questionType: {
+          type: String,
+          enum: [
+            "multiple-choice",
+            "open-ended",
+            "gap-fill",
+            "translation",
+            "correct-mistake",
+            "matching",
+            "sentence-ordering",
+            "long-form",
+          ],
+        },
         mark: { type: Number, default: 1 }, // max points for this question
         pointsAwarded: { type: Number, default: 0 }, // teacher-assigned points for open-ended
         needsManualGrading: { type: Boolean, default: false },

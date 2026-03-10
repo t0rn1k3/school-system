@@ -1,6 +1,11 @@
 const AsyncHandler = require("express-async-handler");
 const Question = require("../../model/Academic/Question");
 const Exam = require("../../model/Academic/Exam");
+const {
+  QUESTION_TYPES,
+  validateQuestionPayload,
+  buildPayloadForType,
+} = require("../../utils/questionTypeUtils");
 
 //@desc Create question
 //@route POST /api/v1/questions/:examId
@@ -16,6 +21,11 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     optionD = "",
     correctAnswer = "",
     mark = 1,
+    gapFillPayload,
+    translationPayload,
+    correctMistakePayload,
+    matchingPayload,
+    sentenceOrderingPayload,
   } = req.body;
 
   //find the exam
@@ -29,6 +39,13 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     });
   }
 
+  if (!QUESTION_TYPES.includes(questionType)) {
+    return res.status(400).json({
+      status: "failed",
+      message: `questionType must be one of: ${QUESTION_TYPES.join(", ")}`,
+    });
+  }
+
   // For multiple-choice, validate options and correctAnswer
   if (questionType === "multiple-choice") {
     if (!optionA || !optionB || !optionC || !optionD || !correctAnswer) {
@@ -39,13 +56,30 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
       });
     }
     const validAnswers = ["A", "B", "C", "D"];
-    if (!validAnswers.includes(correctAnswer.toUpperCase())) {
+    if (!validAnswers.includes(String(correctAnswer).toUpperCase())) {
       return res.status(400).json({
         status: "failed",
         message: "correctAnswer must be A, B, C, or D",
       });
     }
   }
+
+  // Validate type-specific payload for language test types
+  const payloadValidation = validateQuestionPayload(questionType, req.body);
+  if (!payloadValidation.valid) {
+    return res.status(400).json({
+      status: "failed",
+      message: payloadValidation.message,
+    });
+  }
+
+  const payload = buildPayloadForType(questionType, {
+    gapFillPayload,
+    translationPayload,
+    correctMistakePayload,
+    matchingPayload,
+    sentenceOrderingPayload,
+  });
 
   //create question
 
@@ -56,8 +90,9 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     optionB,
     optionC,
     optionD,
-    correctAnswer: correctAnswer.toUpperCase?.() || correctAnswer,
+    correctAnswer: String(correctAnswer).toUpperCase?.() || correctAnswer,
     mark,
+    ...payload,
     createdBy: req.userAuth._id,
   });
 
@@ -109,7 +144,44 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
     optionD,
     correctAnswer,
     mark,
+    gapFillPayload,
+    translationPayload,
+    correctMistakePayload,
+    matchingPayload,
+    sentenceOrderingPayload,
   } = req.body;
+
+  const existingQuestion = await Question.findById(req.params.id);
+  if (!existingQuestion) {
+    return res.status(404).json({
+      status: "failed",
+      message: "Question not found",
+    });
+  }
+
+  const effectiveType = questionType !== undefined ? questionType : existingQuestion.questionType;
+  if (questionType !== undefined && !QUESTION_TYPES.includes(questionType)) {
+    return res.status(400).json({
+      status: "failed",
+      message: `questionType must be one of: ${QUESTION_TYPES.join(", ")}`,
+    });
+  }
+
+  const bodyForValidation = {
+    gapFillPayload: gapFillPayload ?? existingQuestion.gapFillPayload,
+    translationPayload: translationPayload ?? existingQuestion.translationPayload,
+    correctMistakePayload: correctMistakePayload ?? existingQuestion.correctMistakePayload,
+    matchingPayload: matchingPayload ?? existingQuestion.matchingPayload,
+    sentenceOrderingPayload:
+      sentenceOrderingPayload ?? existingQuestion.sentenceOrderingPayload,
+  };
+  const payloadValidation = validateQuestionPayload(effectiveType, bodyForValidation);
+  if (!payloadValidation.valid) {
+    return res.status(400).json({
+      status: "failed",
+      message: payloadValidation.message,
+    });
+  }
 
   // Build update object with only provided fields (partial update)
   const updateData = {};
@@ -125,6 +197,13 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
         ? correctAnswer.toUpperCase()
         : correctAnswer;
   if (mark !== undefined) updateData.mark = mark;
+  if (gapFillPayload !== undefined) updateData.gapFillPayload = gapFillPayload;
+  if (translationPayload !== undefined) updateData.translationPayload = translationPayload;
+  if (correctMistakePayload !== undefined)
+    updateData.correctMistakePayload = correctMistakePayload;
+  if (matchingPayload !== undefined) updateData.matchingPayload = matchingPayload;
+  if (sentenceOrderingPayload !== undefined)
+    updateData.sentenceOrderingPayload = sentenceOrderingPayload;
 
   const questionFound = await Question.findOneAndUpdate(
     { _id: req.params.id, isDeleted: { $ne: true } },
