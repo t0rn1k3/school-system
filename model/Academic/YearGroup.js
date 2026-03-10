@@ -16,6 +16,11 @@ const yearGroupSchema = new mongoose.Schema(
       ref: "AcademicYear",
       required: true,
     },
+    program: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Program",
+      required: false,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

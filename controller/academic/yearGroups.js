@@ -1,6 +1,7 @@
 const AsyncHandler = require("express-async-handler");
 const Admin = require("../../model/Staff/Admin");
 const AcademicYear = require("../../model/Academic/AcademicYear");
+const Program = require("../../model/Academic/Program");
 const YearGroup = require("../../model/Academic/YearGroup");
 
 //@desc Create year group
@@ -17,7 +18,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, academicYear } = req.body;
+  const { name, academicYear, program } = req.body;
 
   // Validate required fields
   if (!name || !academicYear) {
@@ -53,11 +54,28 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
       message: "Academic year not found",
     });
   }
+
+  // Validate program if provided
+  if (program) {
+    const programFound = await Program.findOne({
+      _id: program,
+      isDeleted: { $ne: true },
+    });
+    if (!programFound) {
+      return res.status(404).json({
+        status: "failed",
+        messageKey: "year_group.program_not_found",
+        message: "Program not found",
+      });
+    }
+  }
+
   //create year group
   const yearGroupCreated = await YearGroup.create({
     name,
     createdBy: req.userAuth._id,
     academicYear,
+    ...(program && { program }),
   });
 
   //push to the academic year
@@ -83,7 +101,9 @@ exports.getYearGroups = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted year groups (handle documents without isDeleted field)
   const yearGroups = await YearGroup.find({
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+  })
+    .populate("program", "name description")
+    .populate("academicYear", "name fromYear toYear");
   res.status(200).json({
     status: "success",
     message: "Year groups fetched successfully",
@@ -99,7 +119,9 @@ exports.getYearGroup = AsyncHandler(async (req, res) => {
   const yearGroup = await YearGroup.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+  })
+    .populate("program", "name description")
+    .populate("academicYear", "name fromYear toYear");
 
   if (!yearGroup) {
     return res.status(404).json({
@@ -130,7 +152,7 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, academicYear } = req.body;
+  const { name, academicYear, program } = req.body;
 
   // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
@@ -148,10 +170,26 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     }
   }
 
+  // Validate program if provided (null/empty allows unsetting)
+  if (program !== undefined && program !== null && program !== "") {
+    const programFound = await Program.findOne({
+      _id: program,
+      isDeleted: { $ne: true },
+    });
+    if (!programFound) {
+      return res.status(404).json({
+        status: "failed",
+        messageKey: "year_group.program_not_found",
+        message: "Program not found",
+      });
+    }
+  }
+
   // Build update object with only provided fields
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
+  if (program !== undefined) updateData.program = program === null || program === "" ? undefined : program;
   updateData.updatedBy = req.userAuth._id;
 
   const yearGroup = await YearGroup.findOneAndUpdate(
@@ -163,7 +201,9 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     {
       new: true,
     },
-  );
+  )
+    .populate("program", "name description")
+    .populate("academicYear", "name fromYear toYear");
 
   if (!yearGroup) {
     return res.status(404).json({
