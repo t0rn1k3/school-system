@@ -154,6 +154,92 @@ function needsManualGrading(questionType) {
 }
 
 /**
+ * Auto-grade a student answer for structured question types.
+ * @param {Object} question - Question doc with questionType and payload
+ * @param {*} studentAnswer - Raw answer: string, array, or object
+ * @returns {{ isCorrect: boolean, pointsAwarded: number } | null } null if not auto-gradeable
+ */
+function gradeAnswer(question, studentAnswer) {
+  const qType = question?.questionType;
+  if (!AUTO_GRADEABLE_TYPES.includes(qType)) return null;
+
+  const mark = question.mark ?? 1;
+
+  switch (qType) {
+    case "gap-fill": {
+      const p = question.gapFillPayload;
+      if (!p || !Array.isArray(p.correctAnswers)) return { isCorrect: false, pointsAwarded: 0 };
+      const answers = Array.isArray(studentAnswer) ? studentAnswer : [];
+      if (answers.length !== p.correctAnswers.length) return { isCorrect: false, pointsAwarded: 0 };
+      let allCorrect = true;
+      for (let i = 0; i < p.correctAnswers.length; i++) {
+        const accepted = (p.correctAnswers[i] || []).map((v) => String(v).toLowerCase().trim());
+        const given = String(answers[i] || "").toLowerCase().trim();
+        if (!accepted.length || !accepted.includes(given)) {
+          allCorrect = false;
+          break;
+        }
+      }
+      return {
+        isCorrect: allCorrect,
+        pointsAwarded: allCorrect ? mark : 0,
+      };
+    }
+
+    case "correct-mistake": {
+      const p = question.correctMistakePayload;
+      if (!p || !Array.isArray(p.correctAnswers) || p.correctAnswers.length === 0) {
+        return { isCorrect: false, pointsAwarded: 0 };
+      }
+      const given = String(studentAnswer || "").toLowerCase().trim();
+      const accepted = p.correctAnswers.map((v) => String(v).toLowerCase().trim());
+      const isCorrect = accepted.includes(given);
+      return {
+        isCorrect,
+        pointsAwarded: isCorrect ? mark : 0,
+      };
+    }
+
+    case "matching": {
+      const p = question.matchingPayload;
+      if (!p || !Array.isArray(p.correctPairs)) return { isCorrect: false, pointsAwarded: 0 };
+      const pairs = Array.isArray(studentAnswer) ? studentAnswer : [];
+      if (pairs.length !== p.correctPairs.length) return { isCorrect: false, pointsAwarded: 0 };
+      let correctCount = 0;
+      const correctSet = new Set(
+        p.correctPairs.map(([l, r]) => `${l},${r}`),
+      );
+      for (const pair of pairs) {
+        const [l, r] = Array.isArray(pair) ? pair : [pair?.left, pair?.right];
+        if (correctSet.has(`${l},${r}`)) correctCount++;
+      }
+      const isCorrect = correctCount === p.correctPairs.length;
+      return {
+        isCorrect,
+        pointsAwarded: isCorrect ? mark : 0,
+      };
+    }
+
+    case "sentence-ordering": {
+      const p = question.sentenceOrderingPayload;
+      if (!p || !Array.isArray(p.correctOrder)) return { isCorrect: false, pointsAwarded: 0 };
+      const order = Array.isArray(studentAnswer) ? studentAnswer : [];
+      if (order.length !== p.correctOrder.length) return { isCorrect: false, pointsAwarded: 0 };
+      const isCorrect =
+        JSON.stringify(order.map(Number)) ===
+        JSON.stringify(p.correctOrder.map(Number));
+      return {
+        isCorrect,
+        pointsAwarded: isCorrect ? mark : 0,
+      };
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
  * Build payload object for create/update (only include fields for the question's type).
  */
 function buildPayloadForType(questionType, body) {
@@ -183,5 +269,6 @@ module.exports = {
   validateQuestionPayload,
   isAutoGradeable,
   needsManualGrading,
+  gradeAnswer,
   buildPayloadForType,
 };

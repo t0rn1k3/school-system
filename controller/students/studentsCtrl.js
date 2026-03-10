@@ -722,53 +722,96 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   }
 
   // Build result object
+  const { gradeAnswer } = require("../../utils/questionTypeUtils");
   const passMark = examFound.passMark ?? 50;
   const totalMark = questions.reduce((sum, q) => sum + (q.mark || 1), 0);
   let score = 0;
   const answeredQuestions = [];
-  let hasOpenEnded = false;
+  let hasManualGrading = false;
 
   for (let i = 0; i < questions.length; i++) {
     const question = questions[i];
-    const studentAnswer = studentAnswers[i] ?? "";
+    const rawAnswer = studentAnswers[i];
     const qType = question.questionType || "multiple-choice";
     const qMark = question.mark || 1;
 
-    if (qType === "open-ended") {
-      hasOpenEnded = true;
-      answeredQuestions.push({
-        question: question.question,
-        questionId: question._id,
-        correctAnswer: question.correctAnswer || "",
-        studentAnswer: String(studentAnswer),
-        isCorrect: null,
-        questionType: "open-ended",
-        mark: qMark,
-        pointsAwarded: 0,
-        needsManualGrading: true,
-      });
-    } else {
+    // Normalize answer for storage
+    const studentAnswerStr =
+      typeof rawAnswer === "string"
+        ? rawAnswer
+        : Array.isArray(rawAnswer) || (rawAnswer && typeof rawAnswer === "object")
+          ? JSON.stringify(rawAnswer)
+          : String(rawAnswer ?? "");
+    const studentAnswerPayload =
+      typeof rawAnswer === "string" ? undefined : rawAnswer;
+
+    if (qType === "multiple-choice") {
       const isCorrect =
         String(question.correctAnswer).toUpperCase() ===
-        String(studentAnswer).toUpperCase();
+        String(rawAnswer ?? "").toUpperCase();
       if (isCorrect) score += qMark;
       answeredQuestions.push({
         question: question.question,
         questionId: question._id,
         correctAnswer: question.correctAnswer,
-        studentAnswer: String(studentAnswer),
+        studentAnswer: studentAnswerStr,
+        studentAnswerPayload,
         isCorrect,
         questionType: "multiple-choice",
         mark: qMark,
         pointsAwarded: isCorrect ? qMark : 0,
         needsManualGrading: false,
       });
+    } else if (
+      qType === "gap-fill" ||
+      qType === "correct-mistake" ||
+      qType === "matching" ||
+      qType === "sentence-ordering"
+    ) {
+      const graded = gradeAnswer(question, rawAnswer);
+      const pts = graded ? graded.pointsAwarded : 0;
+      const correct = graded ? graded.isCorrect : false;
+      if (correct) score += pts;
+      answeredQuestions.push({
+        question: question.question,
+        questionId: question._id,
+        correctAnswer: JSON.stringify(
+          qType === "gap-fill"
+            ? question.gapFillPayload?.correctAnswers
+            : qType === "correct-mistake"
+              ? question.correctMistakePayload?.correctAnswers
+              : qType === "matching"
+                ? question.matchingPayload?.correctPairs
+                : question.sentenceOrderingPayload?.correctOrder,
+        ),
+        studentAnswer: studentAnswerStr,
+        studentAnswerPayload,
+        isCorrect: correct,
+        questionType: qType,
+        mark: qMark,
+        pointsAwarded: pts,
+        needsManualGrading: false,
+      });
+    } else {
+      hasManualGrading = true;
+      answeredQuestions.push({
+        question: question.question,
+        questionId: question._id,
+        correctAnswer: question.correctAnswer || "",
+        studentAnswer: studentAnswerStr,
+        studentAnswerPayload,
+        isCorrect: null,
+        questionType: qType,
+        mark: qMark,
+        pointsAwarded: 0,
+        needsManualGrading: true,
+      });
     }
   }
 
   const grade = totalMark > 0 ? (score / totalMark) * 100 : 0;
   let status = "Pending";
-  if (!hasOpenEnded) {
+  if (!hasManualGrading) {
     status = grade >= passMark ? "Passed" : "Failed";
   }
 
@@ -796,7 +839,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
     academicYear: examFound?.academicYear,
     // academicTerm: examFound?.academicTerm, // Vocational: academic terms not used
     isPublished: false,
-    isFullyGraded: !hasOpenEnded,
+    isFullyGraded: !hasManualGrading,
   });
 
   //push the exam result

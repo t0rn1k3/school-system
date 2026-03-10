@@ -31,7 +31,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
     studentId: studentFound.studentId,
     _id: id,
   })
-    .populate("exam")
+    .populate({ path: "exam", populate: { path: "questions" } })
     .populate("student", "name")
     .populate("classLevel")
     .populate("yearGroup")
@@ -316,7 +316,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
       continue;
     }
     const aq = answeredQuestions[idx];
-    if (aq.needsManualGrading && aq.questionType === "open-ended") {
+    if (aq.needsManualGrading) {
       const oldPts = aq.pointsAwarded || 0;
       const maxPts = aq.mark || 1;
       const capped = Math.min(pts, maxPts);
@@ -325,6 +325,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
         questionId: aq.questionId,
         correctAnswer: aq.correctAnswer,
         studentAnswer: aq.studentAnswer,
+        studentAnswerPayload: aq.studentAnswerPayload,
         isCorrect: capped >= maxPts * 0.5,
         questionType: aq.questionType,
         mark: maxPts,
@@ -346,6 +347,9 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
   else if (grade >= 60) remarks = "Good";
   else if (grade >= 50) remarks = "Average";
 
+  const hasUngradedManual =
+    answeredQuestions.some((a) => a.needsManualGrading === true);
+
   const updated = await ExamResult.findByIdAndUpdate(
     req.params.id,
     {
@@ -354,7 +358,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
       grade,
       status,
       remarks,
-      isFullyGraded: true,
+      isFullyGraded: !hasUngradedManual,
     },
     { new: true },
   )
@@ -401,7 +405,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "failed",
       message:
-        "Cannot publish until all open-ended questions are graded. Use PUT /grade first.",
+        "Cannot publish until all questions requiring manual grading are graded. Use PUT /grade first.",
     });
   }
 
