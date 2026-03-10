@@ -12,6 +12,7 @@ exports.createProgram = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "program.body_required",
       message: "Request body is required",
     });
   }
@@ -26,6 +27,7 @@ exports.createProgram = AsyncHandler(async (req, res) => {
   if (program) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "program.already_exists",
       message: "Program already exists",
     });
   }
@@ -84,6 +86,7 @@ exports.getProgram = AsyncHandler(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "program.not_found",
       message: "Program not found",
     });
   }
@@ -104,6 +107,7 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "program.body_required",
       message: "Request body is required",
     });
   }
@@ -120,6 +124,7 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
     if (createdProgramFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "program.name_exists",
         message: "Program name already exists",
       });
     }
@@ -151,6 +156,7 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "program.not_found",
       message: "Program not found",
     });
   }
@@ -180,6 +186,7 @@ exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "program.not_found",
       message: "Program not found",
     });
   }
@@ -231,6 +238,7 @@ exports.deleteProgram = AsyncHandler(async (req, res) => {
   if (!program) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "program.not_found",
       message: "Program not found",
     });
   }

@@ -12,6 +12,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "year_group.body_required",
       message: "Request body is required",
     });
   }
@@ -22,6 +23,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
   if (!name || !academicYear) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "year_group.fields_required",
       message: "Name and academicYear are required fields",
     });
   }
@@ -34,6 +36,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
   if (yearGroupFound) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "year_group.name_exists",
       message: "Year group name already exists",
     });
   }
@@ -46,6 +49,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
   if (!academicYearFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "year_group.academic_year_not_found",
       message: "Academic year not found",
     });
   }
@@ -100,6 +104,7 @@ exports.getYearGroup = AsyncHandler(async (req, res) => {
   if (!yearGroup) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "year_group.not_found",
       message: "Year group not found",
     });
   }
@@ -120,6 +125,7 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "year_group.body_required",
       message: "Request body is required",
     });
   }
@@ -136,6 +142,7 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     if (createdYearGroupFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "year_group.name_exists",
         message: "Year group name already exists",
       });
     }
@@ -161,6 +168,7 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
   if (!yearGroup) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "year_group.not_found",
       message: "Year group not found",
     });
   }
@@ -189,6 +197,7 @@ exports.deleteYearGroup = AsyncHandler(async (req, res) => {
   if (!yearGroup) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "year_group.not_found",
       message: "Year group not found",
     });
   }

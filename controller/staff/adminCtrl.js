@@ -112,6 +112,7 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
   if (!admin) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.not_found",
       message: "Admin not found",
     });
   }
@@ -140,6 +141,7 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     if (!admin) {
       return res.status(404).json({
         status: "failed",
+        messageKey: "admin.not_found",
         message: "Admin not found",
       });
     }
@@ -162,6 +164,7 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "admin.email_exists",
         message: "Email already exists",
       });
     }
@@ -191,6 +194,7 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     if (!admin) {
       return res.status(404).json({
         status: "failed",
+        messageKey: "admin.not_found",
         message: "Admin not found",
       });
     }
@@ -219,6 +223,7 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     if (!admin) {
       return res.status(404).json({
         status: "failed",
+        messageKey: "admin.not_found",
         message: "Admin not found",
       });
     }
@@ -248,6 +253,7 @@ exports.deleteAdminCTRL = AsyncHandler(async (req, res) => {
   if (!admin) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.not_found",
       message: "Admin not found",
     });
   }
@@ -272,6 +278,7 @@ exports.adminSuspendTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!idParam) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "admin.teacher_id_required",
       message: "Teacher ID is required",
     });
   }
@@ -283,6 +290,7 @@ exports.adminSuspendTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.teacher_not_found",
       message: "Teacher not found",
     });
   }
@@ -302,6 +310,7 @@ exports.adminUnsupendTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!idParam) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "admin.teacher_id_required",
       message: "Teacher ID is required",
     });
   }
@@ -313,6 +322,7 @@ exports.adminUnsupendTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.teacher_not_found",
       message: "Teacher not found",
     });
   }
@@ -332,6 +342,7 @@ exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!idParam) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "admin.teacher_id_required",
       message: "Teacher ID is required",
     });
   }
@@ -339,6 +350,7 @@ exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.teacher_not_found",
       message: "Teacher not found",
     });
   }
@@ -361,6 +373,7 @@ exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
 exports.adminUnwithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   res.status(400).json({
     status: "failed",
+    messageKey: "admin.cannot_unwithdraw_teacher",
     message:
       "Cannot unwithdraw. Withdrawn teachers are permanently deleted. Register a new teacher if needed.",
   });
@@ -376,6 +389,7 @@ exports.adminWithdrawStudentCtrl = AsyncHandler(async (req, res) => {
   if (!student) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.student_not_found",
       message: "Student not found",
     });
   }
@@ -393,6 +407,7 @@ exports.adminWithdrawStudentCtrl = AsyncHandler(async (req, res) => {
 exports.adminUnwithdrawStudentCtrl = AsyncHandler(async (req, res) => {
   res.status(400).json({
     status: "failed",
+    messageKey: "admin.cannot_unwithdraw_student",
     message:
       "Cannot unwithdraw. Withdrawn students are permanently deleted. Register a new student if needed.",
   });

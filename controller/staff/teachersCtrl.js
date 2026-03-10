@@ -18,6 +18,7 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "teacher.body_required",
       message: "Request body is required",
     });
   }
@@ -28,6 +29,7 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!name || !email || !password) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "teacher.fields_required",
       message: "Name, email, and password are required fields",
     });
   }
@@ -36,6 +38,7 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!adminFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.not_found",
       message: "Admin not found",
     });
   }
@@ -48,6 +51,7 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
   if (teacher) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "teacher.already_exists",
       message: "Teacher already exists",
     });
   }
@@ -88,6 +92,7 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(401).json({
       status: "failed",
+      messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
   }
@@ -97,6 +102,7 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
   if (!isMatched) {
     return res.status(401).json({
       status: "failed",
+      messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
   } else {
@@ -177,6 +183,7 @@ exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "teacher.not_found",
       message: "Teacher not found",
     });
   }
@@ -203,6 +210,7 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "teacher.not_found",
       message: "Teacher not found",
     });
   }
@@ -229,6 +237,7 @@ exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "teacher.not_found",
       message: "Teacher not found",
     });
   }
@@ -245,6 +254,7 @@ exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
     if (!teacherYearGroupIds.some((id) => id.toString() === filterId)) {
       return res.status(403).json({
         status: "failed",
+        messageKey: "teacher.year_groups_only",
         message: "You can only view students in your assigned year groups",
       });
     }
@@ -339,6 +349,7 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "teacher.email_exists",
         message: "Email already exists",
       });
     }
@@ -417,6 +428,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "teacher.body_required",
       message: "Request body is required",
     });
   }
@@ -445,6 +457,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   if (!teacherFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "teacher.not_found",
       message: "Teacher not found",
     });
   }
@@ -453,6 +466,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
   if (teacherFound.isWithdrawn) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "teacher.withdrawn",
       message: "Action denied, teacher is withdrawn",
     });
   }
@@ -478,6 +492,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     if (typeof password !== "string" || password.trim().length < 6) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "teacher.password_min",
         message: "Password must be at least 6 characters",
       });
     }
@@ -494,6 +509,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "teacher.email_exists",
         message: "Email already exists",
       });
     }
@@ -590,6 +606,7 @@ exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!idParam) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "teacher.teacher_id_required",
       message: "Teacher ID is required",
     });
   }
@@ -597,6 +614,7 @@ exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "teacher.not_found",
       message: "Teacher not found",
     });
   }

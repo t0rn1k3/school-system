@@ -20,6 +20,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -61,6 +62,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
   if (!examResult) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam_result.no_result_found",
       message:
         "No exam result found. You may not have taken this exam yet, or the result does not belong to you.",
     });
@@ -69,6 +71,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
   if (!examResult.isPublished) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "exam_result.not_published",
       message:
         "Exam result not published yet. Please wait for your teacher to publish it.",
     });
@@ -113,6 +116,7 @@ exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -236,6 +240,7 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
   if (!exam || exam.createdBy?.toString() !== teacherId.toString()) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "exam_result.teacher_view_only",
       message: "You can only view exam results for exams you created",
     });
   }
@@ -284,6 +289,7 @@ exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
   ) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "exam_result.teacher_grade_only",
       message: "You can only grade exam results for exams you created",
     });
   }
@@ -397,6 +403,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
   ) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "exam_result.teacher_publish_only",
       message: "You can only publish exam results for exams you created",
     });
   }
@@ -404,6 +411,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
   if (!examResult.isFullyGraded) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam_result.cannot_publish_ungraded",
       message:
         "Cannot publish until all questions requiring manual grading are graded. Use PUT /grade first.",
     });
@@ -452,6 +460,7 @@ exports.teacherDownloadProjectCtrl = AsyncHandler(async (req, res) => {
   if (!exam || exam.createdBy?.toString() !== teacherId.toString()) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "exam_result.teacher_download_only",
       message: "You can only download projects for exams you created",
     });
   }
@@ -524,6 +533,7 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
   if (!examResult.submittedFile?.path) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam_result.not_project_submission",
       message:
         "This is not a project submission. Use the regular grade endpoint.",
     });
@@ -593,6 +603,7 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     if (score === undefined || !Number.isFinite(Number(score))) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam_result.score_required",
         message: "score is required and must be a number",
       });
     }
@@ -602,6 +613,7 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     if (!Number.isFinite(totalVal) || totalVal <= 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam_result.total_mark_positive",
         message: "totalMark must be a positive number",
       });
     }

@@ -11,6 +11,7 @@ exports.createAcademicTerm = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "academic_term.body_required",
       message: "Request body is required",
     });
   }
@@ -25,6 +26,7 @@ exports.createAcademicTerm = AsyncHandler(async (req, res) => {
   if (academicTerm) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "academic_term.already_exists",
       message: "Academic term already exists",
     });
   }
@@ -73,6 +75,7 @@ exports.getAcademicTerm = AsyncHandler(async (req, res) => {
   if (!academicTerm) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_term.not_found",
       message: "Academic term not found",
     });
   }
@@ -93,6 +96,7 @@ exports.updateAcademicTerm = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "academic_term.body_required",
       message: "Request body is required",
     });
   }
@@ -109,6 +113,7 @@ exports.updateAcademicTerm = AsyncHandler(async (req, res) => {
     if (createdAcademicTermFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "academic_term.name_exists",
         message: "Academic term name already exists",
       });
     }
@@ -132,6 +137,7 @@ exports.updateAcademicTerm = AsyncHandler(async (req, res) => {
   if (!academicTerm) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_term.not_found",
       message: "Academic term not found",
     });
   }
@@ -160,6 +166,7 @@ exports.deleteAcademicTerm = AsyncHandler(async (req, res) => {
   if (!academicTerm) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_term.not_found",
       message: "Academic term not found",
     });
   }

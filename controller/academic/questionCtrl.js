@@ -35,6 +35,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
   if (!examFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "question.exam_not_found",
       message: "Exam not found",
     });
   }
@@ -42,6 +43,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
   if (!QUESTION_TYPES.includes(questionType)) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "question.type_invalid",
       message: `questionType must be one of: ${QUESTION_TYPES.join(", ")}`,
     });
   }
@@ -51,6 +53,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     if (!optionA || !optionB || !optionC || !optionD || !correctAnswer) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "question.mcq_options_required",
         message:
           "Multiple-choice questions require optionA, optionB, optionC, optionD, and correctAnswer",
       });
@@ -59,6 +62,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
     if (!validAnswers.includes(String(correctAnswer).toUpperCase())) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "question.correct_answer_abcd",
         message: "correctAnswer must be A, B, C, or D",
       });
     }
@@ -69,6 +73,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
   if (!payloadValidation.valid) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "question.payload_validation",
       message: payloadValidation.message,
     });
   }
@@ -155,6 +160,7 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
   if (!existingQuestion) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "question.not_found",
       message: "Question not found",
     });
   }
@@ -163,6 +169,7 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
   if (questionType !== undefined && !QUESTION_TYPES.includes(questionType)) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "question.type_invalid",
       message: `questionType must be one of: ${QUESTION_TYPES.join(", ")}`,
     });
   }
@@ -179,6 +186,7 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
   if (!payloadValidation.valid) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "question.payload_validation",
       message: payloadValidation.message,
     });
   }
@@ -213,6 +221,7 @@ exports.updateQuestion = AsyncHandler(async (req, res) => {
   if (!questionFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "question.not_found",
       message: "Question not found",
     });
   }

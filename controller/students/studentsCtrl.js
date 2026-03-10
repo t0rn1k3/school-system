@@ -17,6 +17,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student.body_required",
       message: "Request body is required",
     });
   }
@@ -29,6 +30,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   if (!adminFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "admin.not_found",
       message: "Admin not found",
     });
   }
@@ -37,6 +39,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   if (!name || !email || !password) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student.fields_required",
       message: "Name, email, and password are required fields",
     });
   }
@@ -49,6 +52,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   if (student) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "student.already_exists",
       message: "Student already exists",
     });
   }
@@ -95,6 +99,7 @@ exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
   if (!student) {
     return res.status(401).json({
       status: "failed",
+      messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
   }
@@ -104,6 +109,7 @@ exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
   if (!isMatched) {
     return res.status(401).json({
       status: "failed",
+      messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
   } else {
@@ -132,6 +138,7 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
   if (!student) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -201,6 +208,7 @@ exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
   if (!userIsAdmin && !isOwnProfile) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "student.graduation_own_only",
       message: "You can only view your own graduation status",
     });
   }
@@ -212,6 +220,7 @@ exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
   if (!student) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -354,6 +363,7 @@ exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "student.email_exists",
         message: "Email already exists",
       });
     }
@@ -432,6 +442,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student.body_required",
       message: "Request body is required",
     });
   }
@@ -447,6 +458,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -480,6 +492,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (studentFound.isWithdrawn && isWithdrawn !== false) {
     return res.status(403).json({
       status: "failed",
+      messageKey: "student.withdrawn",
       message: "Action denied, student is withdrawn",
     });
   }
@@ -503,6 +516,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     if (emailExist) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "student.email_exists",
         message: "Email already exists",
       });
     }
@@ -557,6 +571,7 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -597,6 +612,7 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -611,6 +627,7 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
   if (!exam || exam.isDeleted) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.not_found",
       message: "Exam not found",
     });
   }
@@ -623,6 +640,7 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
   if (alreadyTaken) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.already_taken",
       message: "You have already taken this exam",
     });
   }
@@ -630,6 +648,7 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
   if (studentFound.isSuspended || studentFound.isWithdrawn) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.suspended",
       message: "You are suspended or withdrawn",
     });
   }
@@ -651,6 +670,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found_or_deleted",
       message: "Student not found or deleted",
     });
   }
@@ -662,6 +682,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (!examFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.not_found",
       message: "Exam not found",
     });
   }
@@ -669,6 +690,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (examFound.examType === "project-submission") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.project_submission_required",
       message:
         "This is a project-submission exam. Please use the upload form to submit your ZIP file.",
     });
@@ -679,6 +701,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (!questions) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student_exam.questions_not_found",
       message: "Questions not found",
     });
   }
@@ -688,6 +711,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (!studentAnswers) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student_exam.answers_not_found",
       message: "Student answers not found",
     });
   }
@@ -696,6 +720,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (studentAnswers.length !== questions.length) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.answer_all",
       message: "Please answer all questions",
     });
   }
@@ -708,6 +733,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (studentFoundInResults) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.already_taken",
       message: "You have already taken this exam",
     });
   }
@@ -717,6 +743,7 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
   if (studentFound?.isSuspended || studentFound?.isWithdrawn) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.suspended",
       message: "You are suspended or withdrawn",
     });
   }
@@ -868,6 +895,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "student.not_found",
       message: "Student not found",
     });
   }
@@ -875,6 +903,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (studentFound.isSuspended || studentFound.isWithdrawn) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.suspended",
       message: "You are suspended or withdrawn",
     });
   }
@@ -885,6 +914,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (!examFound || examFound.isDeleted) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.not_found",
       message: "Exam not found",
     });
   }
@@ -892,6 +922,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (examFound.examType !== "project-submission") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.project_submission_required",
       message: "This exam is not a project-submission type",
     });
   }
@@ -899,6 +930,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.no_file_uploaded",
       message:
         "No file uploaded. Send as multipart/form-data with field name 'file', 'project', or 'zipFile'. Use FormData and append the file.",
     });
@@ -911,6 +943,7 @@ exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
   if (alreadySubmitted) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "student_exam.already_submitted_project",
       message: "You have already submitted a project for this exam",
     });
   }

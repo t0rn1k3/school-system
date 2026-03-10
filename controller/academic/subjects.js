@@ -12,6 +12,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "subject.body_required",
       message: "Request body is required",
     });
   }
@@ -23,6 +24,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
   if (!programFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "subject.program_not_found",
       message: "Program not found",
     });
   }
@@ -31,6 +33,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
   if (subjectFound) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "subject.already_exists",
       message: "Subject already exists",
     });
   }
@@ -82,6 +85,7 @@ exports.getSubject = AsyncHandler(async (req, res) => {
   if (!subject) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "subject.not_found",
       message: "Subject not found",
     });
   }
@@ -102,6 +106,7 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "subject.body_required",
       message: "Request body is required",
     });
   }
@@ -118,6 +123,7 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
     if (createdSubjectFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "subject.name_exists",
         message: "Subject name already exists",
       });
     }
@@ -144,6 +150,7 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
   if (!subject) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "subject.not_found",
       message: "Subject not found",
     });
   }
@@ -172,6 +179,7 @@ exports.deleteSubject = AsyncHandler(async (req, res) => {
   if (!subject) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "subject.not_found",
       message: "Subject not found",
     });
   }

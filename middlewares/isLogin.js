@@ -11,6 +11,7 @@ const isLogin = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         status: "failed",
+        messageKey: "auth.no_token",
         message: "Access denied. No token provided.",
       });
     }
@@ -20,6 +21,7 @@ const isLogin = async (req, res, next) => {
     if (!verify) {
       return res.status(401).json({
         status: "failed",
+        messageKey: "auth.invalid_token",
         message: "Access denied. Invalid token.",
       });
     }
@@ -33,6 +35,7 @@ const isLogin = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         status: "failed",
+        messageKey: "auth.user_not_found",
         message: "Access denied. User not found.",
       });
     }
@@ -43,6 +46,7 @@ const isLogin = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       status: "failed",
+      messageKey: "auth.auth_failed",
       message: "Access denied. Authentication failed.",
       error: error.message,
     });

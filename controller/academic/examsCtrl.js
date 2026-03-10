@@ -12,6 +12,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.body_required",
       message: "Request body is required",
     });
   }
@@ -40,6 +41,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     if (!Number.isFinite(p) || p < 0 || p > 100) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.pass_mark_range",
         message: "passMark must be a number between 0 and 100 (percentage)",
       });
     }
@@ -50,6 +52,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     if (!Number.isFinite(t) || t <= 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.total_mark_positive",
         message: "totalMark must be a positive number",
       });
     }
@@ -67,6 +70,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   ) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.fields_required",
       message:
         "All required fields must be provided: name, description, program, duration, examTime, examType, academicYear. Provide yearGroup or classLevel. Provide subject or module.",
     });
@@ -74,12 +78,14 @@ exports.createExam = AsyncHandler(async (req, res) => {
   if (!subject && !module) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.subject_or_module",
       message: "Either subject or module must be provided",
     });
   }
   if (!yearGroup && !classLevel) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.year_group_or_class",
       message: "Either yearGroup or classLevel must be provided",
     });
   }
@@ -88,6 +94,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   if (!validExamTypes.includes(examType)) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.invalid_exam_type",
       message: `examType must be one of: ${validExamTypes.join(", ")}`,
     });
   }
@@ -98,6 +105,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   ) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.invalid_pass_criteria",
       message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
     });
   }
@@ -111,12 +119,14 @@ exports.createExam = AsyncHandler(async (req, res) => {
     if (!module) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.module_required_for_scope",
         message: "module is required when scopeType is single-lo or multiple-los",
       });
     }
     if (loIds.length === 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.learning_outcome_ids_required",
         message: "learningOutcomeIds is required when scopeType is single-lo or multiple-los",
       });
     }
@@ -129,6 +139,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
       if (invalid.length > 0) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.learning_outcome_ids_invalid",
           message: `learningOutcomeIds not found in module: ${invalid.join(", ")}`,
         });
       }
@@ -144,6 +155,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   if (!teacherFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.teacher_not_found",
       message: "Teacher not found",
     });
   }
@@ -156,6 +168,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
   if (examExists) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "exam.already_exists",
       message: "Exam already exists",
     });
   }
@@ -178,6 +191,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
       if (isNaN(parsedExamDate.getTime())) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.invalid_date",
           message:
             "Invalid examDate format. Please use a valid date format (e.g., '2024-12-20', 'December 20, 2024', or ISO date string)",
         });
@@ -189,6 +203,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
       if (isNaN(parsedExamDate.getTime())) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.invalid_date",
           message: "Invalid examDate format",
         });
       }
@@ -266,6 +281,7 @@ exports.getExam = AsyncHandler(async (req, res) => {
   if (!exam) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.not_found",
       message: "Exam not found",
     });
   }
@@ -286,6 +302,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "exam.body_required",
       message: "Request body is required",
     });
   }
@@ -316,6 +333,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!Number.isFinite(p) || p < 0 || p > 100) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.pass_mark_range",
         message: "passMark must be a number between 0 and 100 (percentage)",
       });
     }
@@ -325,6 +343,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!Number.isFinite(t) || t <= 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.total_mark_positive",
         message: "totalMark must be a positive number",
       });
     }
@@ -335,6 +354,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!validExamTypes.includes(examType)) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.invalid_exam_type",
         message: `examType must be one of: ${validExamTypes.join(", ")}`,
       });
     }
@@ -344,6 +364,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!validPassCriteriaTypes.includes(passCriteriaType)) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.invalid_pass_criteria",
         message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
       });
     }
@@ -354,6 +375,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!validScopeTypes.includes(scopeType)) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.invalid_scope_type",
         message: `scopeType must be one of: ${validScopeTypes.join(", ")}`,
       });
     }
@@ -366,12 +388,14 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (!modId) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.module_required_for_scope",
         message: "module is required when scopeType is single-lo or multiple-los",
       });
     }
     if (scopeType !== undefined && loIds.length === 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "exam.learning_outcome_ids_required",
         message: "learningOutcomeIds is required when scopeType is single-lo or multiple-los",
       });
     }
@@ -384,6 +408,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       if (invalid.length > 0) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.learning_outcome_ids_invalid",
           message: `learningOutcomeIds not found in module: ${invalid.join(", ")}`,
         });
       }
@@ -400,6 +425,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     if (examFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "exam.name_exists",
         message: "Exam name already exists",
       });
     }
@@ -420,6 +446,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       if (isNaN(parsedExamDate.getTime())) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.invalid_date",
           message: "Invalid examDate format. Please use a valid date format",
         });
       }
@@ -430,6 +457,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       if (isNaN(parsedExamDate.getTime())) {
         return res.status(400).json({
           status: "failed",
+          messageKey: "exam.invalid_date",
           message: "Invalid examDate format",
         });
       }
@@ -485,6 +513,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (!examUploaded) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "exam.not_found",
       message: "Exam not found",
     });
   }

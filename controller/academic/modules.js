@@ -18,6 +18,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "module.body_required",
       message: "Request body is required",
     });
   }
@@ -44,6 +45,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   if (!name || !description || !program) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "module.fields_required",
       message: "Name, description, and program are required",
     });
   }
@@ -55,6 +57,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   if (!programFound) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "module.program_not_found",
       message: "Program not found",
     });
   }
@@ -67,6 +70,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   if (moduleNameExists) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "module.name_exists",
       message: "Module name already exists in this program",
     });
   }
@@ -78,6 +82,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "module.validation",
         message: validation.message,
       });
     }
@@ -93,6 +98,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   } else {
     return res.status(400).json({
       status: "failed",
+      messageKey: "module.learning_outcomes_required",
       message: "At least one Learning Outcome (with criteria) or legacy criteria is required",
     });
   }
@@ -123,6 +129,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "module.validation",
         message: validation.message,
       });
     }
@@ -214,6 +221,7 @@ exports.getModule = AsyncHandler(async (req, res) => {
   if (!module) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "module.not_found",
       message: "Module not found",
     });
   }
@@ -233,6 +241,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "module.body_required",
       message: "Request body is required",
     });
   }
@@ -259,6 +268,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (!existingModule) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "module.not_found",
       message: "Module not found",
     });
   }
@@ -273,6 +283,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     if (moduleFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "module.name_exists",
         message: "Module name already exists in this program",
       });
     }
@@ -294,6 +305,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "module.validation",
         message: validation.message,
       });
     }
@@ -308,6 +320,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     if (!Array.isArray(learningOutcomesInput) || learningOutcomesInput.length === 0) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "module.learning_outcome_required",
         message: "At least one Learning Outcome is required",
       });
     }
@@ -315,6 +328,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
+        messageKey: "module.validation",
         message: validation.message,
       });
     }
@@ -367,6 +381,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (!module) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "module.not_found",
       message: "Module not found",
     });
   }
@@ -387,6 +402,7 @@ exports.deleteModule = AsyncHandler(async (req, res) => {
   if (!module) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "module.not_found",
       message: "Module not found",
     });
   }

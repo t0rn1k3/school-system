@@ -11,6 +11,7 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "academic_year.body_required",
       message: "Request body is required",
     });
   }
@@ -21,6 +22,7 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
   if (!name || !fromYear || !toYear) {
     return res.status(400).json({
       status: "failed",
+      messageKey: "academic_year.fields_required",
       message: "Name, fromYear, and toYear are required fields",
     });
   }
@@ -33,6 +35,7 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
   if (academicYear) {
     return res.status(409).json({
       status: "failed",
+      messageKey: "academic_year.already_exists",
       message: "Academic year already exists",
     });
   }
@@ -81,6 +84,7 @@ exports.getAcademicYear = AsyncHandler(async (req, res) => {
   if (!academiYear) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_year.not_found",
       message: "Academic year not found",
     });
   }
@@ -101,6 +105,7 @@ exports.updateAcademicYear = AsyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
+      messageKey: "academic_year.body_required",
       message: "Request body is required",
     });
   }
@@ -117,6 +122,7 @@ exports.updateAcademicYear = AsyncHandler(async (req, res) => {
     if (createdAcademicYearFound) {
       return res.status(409).json({
         status: "failed",
+        messageKey: "academic_year.name_exists",
         message: "Academic year name already exists",
       });
     }
@@ -140,6 +146,7 @@ exports.updateAcademicYear = AsyncHandler(async (req, res) => {
   if (!academicYear) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_year.not_found",
       message: "Academic year not found",
     });
   }
@@ -168,6 +175,7 @@ exports.deleteAcademicYear = AsyncHandler(async (req, res) => {
   if (!academicYear) {
     return res.status(404).json({
       status: "failed",
+      messageKey: "academic_year.not_found",
       message: "Academic year not found",
     });
   }
