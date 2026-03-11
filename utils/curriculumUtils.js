@@ -24,15 +24,45 @@ function distributeHoursEvenly(total, durationWeeks, startWeek = 1) {
   return result;
 }
 
+/** Floating point tolerance for sum validation (hours) */
+const SUM_TOLERANCE = 0.01;
+
 /**
- * Validate that weeklyOverrides sum equals contactHours + assessmentHours within module date range.
+ * Filter weeklyOverrides to only weeks in the module's range [startWeek, startWeek+durationWeeks-1].
+ * Extra weeks are dropped. Accepts string or numeric keys (JSON keys are always strings).
+ * @returns {Object} Plain object with string keys, weeks in range only
+ */
+function filterWeeklyOverridesToRange(weeklyOverrides, startWeek, durationWeeks) {
+  const start = Number(startWeek) || 1;
+  const duration = Number(durationWeeks) || 0;
+  const endWeek = start + duration - 1;
+  if (duration <= 0) return {};
+
+  const plain = weeklyOverrides && (weeklyOverrides instanceof Map || typeof weeklyOverrides === "object")
+    ? (weeklyOverrides instanceof Map ? Object.fromEntries(weeklyOverrides) : weeklyOverrides)
+    : {};
+  const result = {};
+  for (const [k, v] of Object.entries(plain)) {
+    const week = parseInt(String(k), 10);
+    if (!Number.isNaN(week) && week >= start && week <= endWeek) {
+      result[String(k)] = Number(v) || 0;
+    }
+  }
+  return result;
+}
+
+/**
+ * Validate that sum(weeklyOverrides) equals contactHours + assessmentHours within module date range.
+ * Uses a small tolerance (0.01) for floating point comparison.
+ * Note: Only contactHours and assessmentHours are summed; independentHours are excluded.
+ *
  * @param {Object} module - Module with contactHours, assessmentHours, durationWeeks, startWeek, weeklyOverrides
- * @returns {{ valid: boolean, message?: string }}
+ * @returns {{ valid: boolean, message?: string, sum?: number, expected?: number }}
  */
 function validateWeeklyOverrides(module) {
-  const totalRequired = (module.contactHours || 0) + (module.assessmentHours || 0);
-  const duration = module.durationWeeks || 0;
-  const start = module.startWeek ?? 1;
+  const totalRequired = (Number(module.contactHours) || 0) + (Number(module.assessmentHours) || 0);
+  const duration = Number(module.durationWeeks) || 0;
+  const start = module.startWeek != null ? Number(module.startWeek) : 1;
   const endWeek = start + duration - 1;
 
   if (duration <= 0) {
@@ -48,17 +78,33 @@ function validateWeeklyOverrides(module) {
       : Object.entries(overrides);
 
     for (const [weekStr, value] of entries) {
-      const week = parseInt(weekStr, 10);
+      const week = parseInt(String(weekStr), 10);
       if (!Number.isNaN(week) && week >= start && week <= endWeek) {
         sum += Number(value) || 0;
       }
     }
   }
 
-  const valid = sum === totalRequired;
+  const diff = Math.abs(sum - totalRequired);
+  const valid = diff < SUM_TOLERANCE;
+
+  if (!valid) {
+    console.warn("[validateWeeklyOverrides] Sum validation failed", {
+      contactHours: module.contactHours,
+      assessmentHours: module.assessmentHours,
+      expected: totalRequired,
+      computedSum: sum,
+      startWeek: start,
+      endWeek,
+      weeklyOverridesKeys: overrides ? Object.keys(overrides instanceof Map ? Object.fromEntries(overrides) : overrides) : [],
+    });
+  }
+
   return {
     valid,
-    message: valid ? undefined : `Weekly hours sum (${sum}) must equal contact+assessment (${totalRequired})`,
+    message: valid ? undefined : `Weekly hours sum (${sum.toFixed(2)}) must equal contact+assessment (${totalRequired})`,
+    sum,
+    expected: totalRequired,
   };
 }
 
@@ -87,34 +133,45 @@ function getWeekLabels(startDate, totalWeeks) {
 
 /**
  * Get effective weekly hours for a module (stored overrides or computed).
+ * Always returns a complete object for all weeks in the module's range (startWeek to startWeek+durationWeeks-1),
+ * so the frontend can render an input for every cell including empty ones (value 0).
  * @param {Object} module - Module doc with weeklyOverrides, contactHours, assessmentHours, durationWeeks, startWeek
- * @returns {Object} Week number (string key) -> hours
+ * @returns {Object} Week number (string key) -> hours; all weeks in range present (0 for empty)
  */
 function getEffectiveWeeklyHours(module) {
-  const overrides = module.weeklyOverrides;
-  const hasOverrides = overrides && (
-    (overrides instanceof Map && overrides.size > 0) ||
-    (typeof overrides === "object" && Object.keys(overrides).length > 0)
-  );
-
-  if (hasOverrides) {
-    const plain = overrides instanceof Map
-      ? Object.fromEntries(overrides)
-      : overrides;
-    return { ...plain };
-  }
-
-  const total = (module.contactHours || 0) + (module.assessmentHours || 0);
-  const duration = module.durationWeeks || 0;
-  const start = module.startWeek ?? 1;
+  const duration = Number(module.durationWeeks) || 0;
+  const start = module.startWeek != null ? Number(module.startWeek) : 1;
 
   if (duration <= 0) return {};
-  return distributeHoursEvenly(total, duration, start);
+
+  const overrides = module.weeklyOverrides;
+  const plain = overrides && (overrides instanceof Map || typeof overrides === "object")
+    ? (overrides instanceof Map ? Object.fromEntries(overrides) : overrides)
+    : {};
+
+  const total = (Number(module.contactHours) || 0) + (Number(module.assessmentHours) || 0);
+  const hasOverrides = Object.keys(plain).some(
+    (k) => !Number.isNaN(parseInt(k, 10)) && (Number(plain[k]) || 0) !== 0
+  );
+
+  const result = {};
+  for (let i = 0; i < duration; i++) {
+    const week = start + i;
+    const key = String(week);
+    const overrideVal = plain[key];
+    result[key] = overrideVal != null ? (Number(overrideVal) || 0) : 0;
+  }
+
+  if (!hasOverrides && total > 0) {
+    return distributeHoursEvenly(total, duration, start);
+  }
+  return result;
 }
 
 module.exports = {
   distributeHoursEvenly,
   validateWeeklyOverrides,
+  filterWeeklyOverridesToRange,
   getWeekLabels,
   getEffectiveWeeklyHours,
 };

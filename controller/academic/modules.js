@@ -4,12 +4,22 @@ const Program = require("../../model/Academic/Program");
 const {
   distributeHoursEvenly,
   validateWeeklyOverrides,
+  filterWeeklyOverridesToRange,
 } = require("../../utils/curriculumUtils");
 const {
   normalizeLearningOutcomes,
   migrateCriteriaToLearningOutcomes,
 } = require("../../utils/learningOutcomesUtils");
 
+/**
+ * weeklyOverrides semantics:
+ * - Week range: Only startWeek..startWeek+durationWeeks-1. Extra weeks are ignored in sum; stored data is filtered to range.
+ * - Create: payload is the complete set, or we auto-generate. Stored weeks filtered to range.
+ * - Update: MERGE. Incoming overwrites existing; validation on final merged object; stored filtered to range.
+ * - Sum: sum(weeklyOverrides) === contactHours + assessmentHours (tolerance 0.01). independentHours excluded.
+ * - Keys: String or number accepted (JSON keys are strings). Values parsed as numbers.
+ * - Errors: module.weekly_hours_invalid (sum wrong); module.validation (other validation).
+ */
 //@desc Create module
 //@route POST /api/v1/modules
 //@access Private Admin
@@ -129,11 +139,12 @@ exports.createModule = AsyncHandler(async (req, res) => {
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
-        messageKey: "module.validation",
+        messageKey: "module.weekly_hours_invalid",
         message: validation.message,
       });
     }
-    Object.entries(plain).forEach(([k, v]) => {
+    const filtered = filterWeeklyOverridesToRange(plain, start, weeks);
+    Object.entries(filtered).forEach(([k, v]) => {
       weeklyOverridesMap.set(String(k), Number(v) || 0);
     });
   } else if (contact + assessment > 0 && weeks > 0) {
@@ -141,6 +152,26 @@ exports.createModule = AsyncHandler(async (req, res) => {
     Object.entries(dist).forEach(([k, v]) => {
       weeklyOverridesMap.set(String(k), v);
     });
+  }
+
+  // When contact+assessment > 0 and durationWeeks > 0: ensure weeklyOverrides exists and sum is correct.
+  // Either we validated user-provided overrides above, or we auto-generated. Re-validate the final set.
+  if (contact + assessment > 0 && weeks > 0) {
+    const plain = Object.fromEntries(weeklyOverridesMap);
+    const finalValidation = validateWeeklyOverrides({
+      contactHours: contact,
+      assessmentHours: assessment,
+      durationWeeks: weeks,
+      startWeek: start,
+      weeklyOverrides: plain,
+    });
+    if (!finalValidation.valid) {
+      return res.status(400).json({
+        status: "failed",
+        messageKey: "module.weekly_hours_invalid",
+        message: finalValidation.message,
+      });
+    }
   }
 
   const validTypes = ["professional", "commonProfessional", "general", "integratedGeneral"];
@@ -290,22 +321,36 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   }
 
   if (weeklyOverridesInput !== undefined && weeklyOverridesInput !== null) {
+    // Merge: incoming weeks overwrite; weeks not in payload keep existing values
+    const existingPlain = existingModule.weeklyOverrides instanceof Map
+      ? Object.fromEntries(existingModule.weeklyOverrides)
+      : (existingModule.weeklyOverrides || {});
+    const incomingPlain = weeklyOverridesInput instanceof Map
+      ? Object.fromEntries(weeklyOverridesInput)
+      : weeklyOverridesInput;
+    const merged = { ...existingPlain };
+    Object.entries(incomingPlain).forEach(([k, v]) => {
+      const num = Number(v);
+      if (!Number.isNaN(num) && num >= 0) {
+        merged[String(k)] = num;
+      } else if (v === "" || v === null || v === undefined) {
+        merged[String(k)] = 0;
+      }
+    });
+
     const moduleForValidation = {
       ...existingModule.toObject(),
       contactHours: contactHours !== undefined ? Number(contactHours) : existingModule.contactHours,
       assessmentHours: assessmentHours !== undefined ? Number(assessmentHours) : existingModule.assessmentHours,
       durationWeeks: durationWeeks !== undefined ? Number(durationWeeks) : existingModule.durationWeeks,
       startWeek: startWeek !== undefined ? Number(startWeek) : existingModule.startWeek,
-      weeklyOverrides:
-        weeklyOverridesInput instanceof Map
-          ? Object.fromEntries(weeklyOverridesInput)
-          : weeklyOverridesInput,
+      weeklyOverrides: merged,
     };
     const validation = validateWeeklyOverrides(moduleForValidation);
     if (!validation.valid) {
       return res.status(400).json({
         status: "failed",
-        messageKey: "module.validation",
+        messageKey: "module.weekly_hours_invalid",
         message: validation.message,
       });
     }
@@ -358,15 +403,26 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (credits !== undefined) updateData.credits = Number(credits) || 0;
   if (startWeek !== undefined) updateData.startWeek = Number(startWeek) || 1;
   if (weeklyOverridesInput !== undefined && weeklyOverridesInput !== null) {
-    const map = new Map();
-    const plain =
-      weeklyOverridesInput instanceof Map
-        ? Object.fromEntries(weeklyOverridesInput)
-        : weeklyOverridesInput;
-    Object.entries(plain).forEach(([k, v]) => {
-      map.set(String(k), Number(v) || 0);
+    // Merge with existing, validate on merged, then filter to range and save
+    const existingPlain = existingModule.weeklyOverrides instanceof Map
+      ? Object.fromEntries(existingModule.weeklyOverrides)
+      : (existingModule.weeklyOverrides || {});
+    const incomingPlain = weeklyOverridesInput instanceof Map
+      ? Object.fromEntries(weeklyOverridesInput)
+      : weeklyOverridesInput;
+    const merged = { ...existingPlain };
+    Object.entries(incomingPlain).forEach(([k, v]) => {
+      const num = Number(v);
+      if (!Number.isNaN(num) && num >= 0) {
+        merged[String(k)] = num;
+      } else if (v === "" || v === null || v === undefined) {
+        merged[String(k)] = 0;
+      }
     });
-    updateData.weeklyOverrides = map;
+    const duration = durationWeeks !== undefined ? Number(durationWeeks) : existingModule.durationWeeks;
+    const start = startWeek !== undefined ? Number(startWeek) : existingModule.startWeek ?? 1;
+    const filtered = filterWeeklyOverridesToRange(merged, start, duration);
+    updateData.weeklyOverrides = new Map(Object.entries(filtered));
   }
   updateData.updatedBy = req.userAuth._id;
 
