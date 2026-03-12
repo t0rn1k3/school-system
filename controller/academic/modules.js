@@ -213,8 +213,9 @@ exports.createModule = AsyncHandler(async (req, res) => {
 });
 
 //@desc Get all modules
-//@route GET /api/v1/modules (optional query: ?program=id)
-//@access Private
+//@route GET /api/v1/modules (optional query: ?program=id, ?teacher=teacherId)
+//@access Private (Teacher: may only filter by own ID; Admin: any filter)
+//@response Each module includes program (populated) so frontend can derive teacher's programs
 
 exports.getModules = AsyncHandler(async (req, res) => {
   const filter = { isDeleted: { $ne: true } };
@@ -222,7 +223,11 @@ exports.getModules = AsyncHandler(async (req, res) => {
     filter.program = req.query.program;
   }
   if (req.query.teacher) {
-    filter.teachers = req.query.teacher;
+    if (req.userAuth?.role === "teacher") {
+      filter.teachers = req.userAuth._id;
+    } else {
+      filter.teachers = req.query.teacher;
+    }
   }
 
   const modules = await Module.find(filter)

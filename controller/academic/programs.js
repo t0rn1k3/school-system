@@ -184,9 +184,21 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
   });
 });
 
+function teacherCanAccessProgram(program, teacherId) {
+  const tid = (teacherId && (teacherId._id || teacherId))?.toString?.();
+  if (!tid) return false;
+  return (program.modules || []).some((m) => {
+    const teachers = m.teachers || [];
+    return teachers.some((t) => {
+      const tId = (t && (t._id || t))?.toString?.();
+      return tId === tid;
+    });
+  });
+}
+
 //@desc Get program curriculum with resolved weekly hours per module
 //@route GET /api/v1/programs/:id/curriculum
-//@access Private
+//@access Private (Teacher or Admin; Teacher only if they teach at least one module)
 
 exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
   const program = await Program.findOne({
@@ -205,6 +217,16 @@ exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
       messageKey: "program.not_found",
       message: "Program not found",
     });
+  }
+
+  if (req.userAuth?.role === "teacher") {
+    if (!teacherCanAccessProgram(program, req.userAuth._id)) {
+      return res.status(403).json({
+        status: "failed",
+        messageKey: "program.curriculum_forbidden",
+        message: "You may only view curriculum for programs where you teach at least one module.",
+      });
+    }
   }
 
   const totalWeeks = program.durationWeeks || 0;
@@ -512,6 +534,16 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
       messageKey: "program.not_found",
       message: "Program not found",
     });
+  }
+
+  if (req.userAuth?.role === "teacher") {
+    if (!teacherCanAccessProgram(program, req.userAuth._id)) {
+      return res.status(403).json({
+        status: "failed",
+        messageKey: "program.curriculum_forbidden",
+        message: "You may only download curriculum for programs where you teach at least one module.",
+      });
+    }
   }
 
   const totalWeeks = program.durationWeeks || 0;
