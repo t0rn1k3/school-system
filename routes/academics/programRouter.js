@@ -4,6 +4,7 @@ const {
   getPrograms,
   getProgram,
   getProgramCurriculum,
+  downloadCurriculumXls,
   updateProgramCurriculum,
   resetProgramCurriculum,
   updateProgram,
@@ -17,6 +18,7 @@ const isTeacherOrAdmin = require("../../middlewares/isTeacherOrAdmin");
 ProgramRouter.post("/", isLogin, isAdmin, createProgram);
 ProgramRouter.get("/", isTeacherOrAdmin, getPrograms);
 ProgramRouter.get("/:id/curriculum", isTeacherOrAdmin, getProgramCurriculum);
+ProgramRouter.get("/:id/curriculum/download", isTeacherOrAdmin, downloadCurriculumXls);
 ProgramRouter.put("/:id/curriculum", isLogin, isAdmin, updateProgramCurriculum);
 ProgramRouter.delete("/:id/curriculum", isLogin, isAdmin, resetProgramCurriculum);
 ProgramRouter.get("/:id", isTeacherOrAdmin, getProgram);

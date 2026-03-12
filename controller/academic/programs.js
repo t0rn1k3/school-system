@@ -1,4 +1,5 @@
 const AsyncHandler = require("express-async-handler");
+const XLSX = require("xlsx");
 const Admin = require("../../model/Staff/Admin");
 const Module = require("../../model/Academic/Module");
 const Program = require("../../model/Academic/Program");
@@ -7,6 +8,7 @@ const {
   getEffectiveWeeklyHours,
   distributeHoursEvenly,
   validateWeeklyOverrides,
+  filterWeeklyOverridesToRange,
 } = require("../../utils/curriculumUtils");
 
 //@desc Create program
@@ -438,6 +440,103 @@ exports.resetProgramCurriculum = AsyncHandler(async (req, res) => {
       weekLabels,
     },
   });
+});
+
+//@desc Download curriculum as XLS file
+//@route GET /api/v1/programs/:id/curriculum/download
+//@access Private (Teacher or Admin)
+
+exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
+  const program = await Program.findOne({
+    _id: req.params.id,
+    isDeleted: { $ne: true },
+  }).populate({
+    path: "modules",
+    match: { isDeleted: { $ne: true } },
+    populate: { path: "teachers", select: "name email teacherId" },
+    options: { sort: { startWeek: 1, order: 1 } },
+  });
+
+  if (!program) {
+    return res.status(404).json({
+      status: "failed",
+      messageKey: "program.not_found",
+      message: "Program not found",
+    });
+  }
+
+  const totalWeeks = program.durationWeeks || 0;
+  const weekLabels = program.startDate
+    ? getWeekLabels(program.startDate, totalWeeks)
+    : Array.from({ length: totalWeeks }, (_, i) => `W${i + 1}`);
+
+  const modules = (program.modules || []).map((m) => {
+    const mod = m.toObject ? m.toObject() : { ...m };
+    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod);
+    return mod;
+  });
+
+  // Build header row: Code, Name, Type, Total, Contact Hrs, Independent Hrs, Assessment Hrs, Duration Weeks, Credits, W1...Wn
+  const headerRow = [
+    "Code",
+    "Name",
+    "Type",
+    "Total",
+    "Contact Hrs",
+    "Independent Hrs",
+    "Assessment Hrs",
+    "Duration Weeks",
+    "Credits",
+  ];
+  for (let w = 1; w <= totalWeeks; w++) {
+    headerRow.push(weekLabels[w - 1] || `W${w}`);
+  }
+
+  const data = [headerRow];
+
+  for (const mod of modules) {
+    const contact = Number(mod.contactHours) || 0;
+    const independent = Number(mod.independentHours) || 0;
+    const assessment = Number(mod.assessmentHours) || 0;
+    const total = contact + independent + assessment;
+    const row = [
+      mod.code ?? "",
+      mod.name ?? "",
+      mod.type ?? "",
+      total,
+      contact,
+      independent,
+      assessment,
+      mod.durationWeeks ?? 0,
+      mod.credits ?? 0,
+    ];
+    const hours = mod.effectiveWeeklyHours || {};
+    for (let w = 1; w <= totalWeeks; w++) {
+      const key = String(w);
+      row.push(hours[key] ?? "");
+    }
+    data.push(row);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  const sheetName = "Curriculum";
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const programName = (program.name || "Curriculum").replace(/[\\/*?:\[\]]/g, "-");
+  const fileName = `${programName}_curriculum.xlsx`;
+
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${encodeURIComponent(fileName)}"`
+  );
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.send(buffer);
 });
 
 //@desc Delete program
