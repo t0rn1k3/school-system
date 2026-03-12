@@ -1,0 +1,48 @@
+{
+  "columnHeaders": {
+    "en": {
+      "code": "Code",
+      "name": "Name",
+      "type": "Type",
+      "total": "Total",
+      "contactHrs": "Contact Hrs",
+      "independentHrs": "Independent Hrs",
+      "assessmentHrs": "Assessment Hrs",
+      "durationWeeks": "Duration Weeks",
+      "credits": "Credits"
+    },
+    "ka": {
+      "code": "კოდი",
+      "name": "სახელი",
+      "type": "ტიპი",
+      "total": "სულ",
+      "contactHrs": "საკონტაქტო საათები",
+      "independentHrs": "დამოუკიდებელი საათები",
+      "assessmentHrs": "შეფასების საათები",
+      "durationWeeks": "ხანგრძლივობა (კვირა)",
+      "credits": "კრედიტები"
+    }
+  },
+  "weekLabels": {
+    "en": { "prefix": "W", "format": "W{n}" },
+    "ka": { "prefix": "კვ", "format": "კვ{n}" }
+  },
+  "moduleTypes": {
+    "en": {
+      "professional": "Professional",
+      "commonProfessional": "Common professional",
+      "general": "General",
+      "integratedGeneral": "Integrated general"
+    },
+    "ka": {
+      "professional": "პროფესიული",
+      "commonProfessional": "საერთო პროფესიული",
+      "general": "ზოგადი",
+      "integratedGeneral": "ინტეგრირებული ზოგადი"
+    }
+  },
+  "sheetName": {
+    "en": "Curriculum",
+    "ka": "სასწავლო გეგმა"
+  }
+}

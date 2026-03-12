@@ -1,6 +1,15 @@
+const path = require("path");
 const AsyncHandler = require("express-async-handler");
 const XLSX = require("xlsx");
 const Admin = require("../../model/Staff/Admin");
+
+const CURRICULUM_TRANSLATIONS = (() => {
+  try {
+    return require(path.join(__dirname, "../../curriculum-export-translations.json"));
+  } catch {
+    return null;
+  }
+})();
 const Module = require("../../model/Academic/Module");
 const Program = require("../../model/Academic/Program");
 const {
@@ -47,7 +56,6 @@ exports.createProgram = AsyncHandler(async (req, res) => {
     ...(durationWeeks !== undefined && { durationWeeks }),
     ...(startDate && { startDate: new Date(startDate) }),
     ...(holidays && Array.isArray(holidays) && { holidays }),
-    ...(classLevels && Array.isArray(classLevels) && { classLevels }),
     createdBy: req.userAuth._id,
   });
 
@@ -442,11 +450,52 @@ exports.resetProgramCurriculum = AsyncHandler(async (req, res) => {
   });
 });
 
+function getCurriculumLabels(locale) {
+  const lang = locale === "ka" ? "ka" : "en";
+  const T = CURRICULUM_TRANSLATIONS;
+  const CH = T?.columnHeaders?.[lang];
+  const MT = T?.moduleTypes?.[lang];
+  const WK = T?.weekLabels?.[lang];
+  return {
+    code: CH?.code ?? (lang === "ka" ? "კოდი" : "Code"),
+    name: CH?.name ?? (lang === "ka" ? "სახელი" : "Name"),
+    type: CH?.type ?? (lang === "ka" ? "ტიპი" : "Type"),
+    total: CH?.total ?? (lang === "ka" ? "სულ" : "Total"),
+    contactHrs: CH?.contactHrs ?? (lang === "ka" ? "საკონტაქტო საათები" : "Contact Hrs"),
+    independentHrs: CH?.independentHrs ?? (lang === "ka" ? "დამოუკიდებელი საათები" : "Independent Hrs"),
+    assessmentHrs: CH?.assessmentHrs ?? (lang === "ka" ? "შეფასების საათები" : "Assessment Hrs"),
+    durationWeeks: CH?.durationWeeks ?? (lang === "ka" ? "ხანგრძლივობა (კვირა)" : "Duration Weeks"),
+    credits: CH?.credits ?? (lang === "ka" ? "კრედიტები" : "Credits"),
+    sheetName: T?.sheetName?.[lang] ?? (lang === "ka" ? "სასწავლო გეგმა" : "Curriculum"),
+    weekPrefix: WK?.prefix ?? (lang === "ka" ? "კვ" : "W"),
+    moduleType: {
+      professional: MT?.professional ?? (lang === "ka" ? "პროფესიული" : "Professional"),
+      commonProfessional: MT?.commonProfessional ?? (lang === "ka" ? "საერთო პროფესიული" : "Common professional"),
+      general: MT?.general ?? (lang === "ka" ? "ზოგადი" : "General"),
+      integratedGeneral: MT?.integratedGeneral ?? (lang === "ka" ? "ინტეგრირებული ზოგადი" : "Integrated general"),
+    },
+  };
+}
+
+function getCurriculumLocale(req) {
+  const q = (req.query.locale || "").toLowerCase();
+  if (q === "ka") return "ka";
+  if (q === "en") return "en";
+  const accept = (req.get("Accept-Language") || "").toLowerCase();
+  if (accept.startsWith("ka") || accept.includes("ka")) return "ka";
+  return "en";
+}
+
 //@desc Download curriculum as XLS file
 //@route GET /api/v1/programs/:id/curriculum/download
+//@query locale=ka|en
+//@header Accept-Language: ka (optional)
 //@access Private (Teacher or Admin)
 
 exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
+  const locale = getCurriculumLocale(req);
+  const L = getCurriculumLabels(locale);
+
   const program = await Program.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
@@ -466,9 +515,14 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
   }
 
   const totalWeeks = program.durationWeeks || 0;
-  const weekLabels = program.startDate
+  const useDateRange = locale === "en" && program.startDate;
+  const weekLabelsRaw = useDateRange
     ? getWeekLabels(program.startDate, totalWeeks)
-    : Array.from({ length: totalWeeks }, (_, i) => `W${i + 1}`);
+    : null;
+  const weekLabels = Array.from(
+    { length: totalWeeks },
+    (_, i) => weekLabelsRaw?.[i] || `${L.weekPrefix}${i + 1}`
+  );
 
   const modules = (program.modules || []).map((m) => {
     const mod = m.toObject ? m.toObject() : { ...m };
@@ -476,20 +530,19 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
     return mod;
   });
 
-  // Build header row: Code, Name, Type, Total, Contact Hrs, Independent Hrs, Assessment Hrs, Duration Weeks, Credits, W1...Wn
   const headerRow = [
-    "Code",
-    "Name",
-    "Type",
-    "Total",
-    "Contact Hrs",
-    "Independent Hrs",
-    "Assessment Hrs",
-    "Duration Weeks",
-    "Credits",
+    L.code,
+    L.name,
+    L.type,
+    L.total,
+    L.contactHrs,
+    L.independentHrs,
+    L.assessmentHrs,
+    L.durationWeeks,
+    L.credits,
   ];
   for (let w = 1; w <= totalWeeks; w++) {
-    headerRow.push(weekLabels[w - 1] || `W${w}`);
+    headerRow.push(weekLabels[w - 1] || `${L.weekPrefix}${w}`);
   }
 
   const data = [headerRow];
@@ -499,10 +552,12 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
     const independent = Number(mod.independentHours) || 0;
     const assessment = Number(mod.assessmentHours) || 0;
     const total = contact + independent + assessment;
+    const typeVal = mod.type || "";
+    const typeLabel = L.moduleType[typeVal] ?? typeVal;
     const row = [
       mod.code ?? "",
       mod.name ?? "",
-      mod.type ?? "",
+      typeLabel,
       total,
       contact,
       independent,
@@ -520,8 +575,7 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
 
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  const sheetName = "Curriculum";
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.utils.book_append_sheet(wb, ws, L.sheetName);
 
   const programName = (program.name || "Curriculum").replace(/[\\/*?:\[\]]/g, "-");
   const fileName = `${programName}_curriculum.xlsx`;
