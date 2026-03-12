@@ -246,20 +246,14 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
   }
 
   let effectiveCriteria = [];
-  if (
-    exam?.passCriteriaType === "all-criteria" &&
-    exam?.module
-  ) {
-    const moduleDoc = typeof exam.module === "object"
-      ? exam.module
-      : await Module.findById(exam.module);
+  if (exam?.passCriteriaType === "all-criteria" && exam?.module) {
+    const moduleDoc =
+      typeof exam.module === "object" ? exam.module : await Module.findById(exam.module);
     effectiveCriteria = getEffectiveCriteriaForExam(moduleDoc || {}, exam);
   }
 
   const data = examResult.toObject ? examResult.toObject() : { ...examResult };
-  if (effectiveCriteria.length > 0) {
-    data.effectiveCriteria = effectiveCriteria;
-  }
+  data.effectiveCriteria = effectiveCriteria;
 
   res.status(200).json({
     status: "success",

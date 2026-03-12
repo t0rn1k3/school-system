@@ -3,14 +3,33 @@
  */
 
 /**
+ * Normalize a criterion for effectiveCriteria: ensure id and display name.
+ * @param {Object} c - Raw criterion (id, name, criterionName, title, description)
+ * @returns {Object} { id, _id, name } - name is name || criterionName || title || description
+ */
+function normalizeCriterionForDisplay(c) {
+  const id = (c?.id ?? c?._id ?? "").toString().trim() || undefined;
+  const name =
+    (c?.name || c?.criterionName || c?.title || c?.description || "").toString().trim() ||
+    "Criterion";
+  return {
+    id,
+    _id: id,
+    name,
+    ...(c?.description && { description: c.description }),
+  };
+}
+
+/**
  * Get effective criteria for an exam based on scopeType and learningOutcomeIds.
  * @param {Object} module - Module doc with learningOutcomes (or legacy criteria)
  * @param {Object} exam - Exam doc with scopeType, learningOutcomeIds
- * @returns {Array} Flat list of criteria { id, name, description } for grading
+ * @returns {Array} Flat list of criteria { id, _id, name, description? } for teacher grading display
  */
 function getEffectiveCriteriaForExam(module, exam) {
   const learningOutcomes = module?.learningOutcomes || [];
   const legacyCriteria = module?.criteria || [];
+  let raw = [];
 
   // Prefer learningOutcomes when present
   if (learningOutcomes.length > 0) {
@@ -18,23 +37,22 @@ function getEffectiveCriteriaForExam(module, exam) {
     const loIds = (exam?.learningOutcomeIds || []).filter(Boolean);
 
     if (scopeType === "all-los" || (scopeType !== "single-lo" && scopeType !== "multiple-los")) {
-      // All LOs: flatten all criteria
-      return learningOutcomes
+      raw = learningOutcomes
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .flatMap((lo) => (lo.criteria || []).map((c) => ({ ...c })));
-    }
-    if (scopeType === "single-lo" || scopeType === "multiple-los") {
+    } else if (scopeType === "single-lo" || scopeType === "multiple-los") {
       if (loIds.length === 0) return [];
       const allowedIds = new Set(loIds.map(String));
-      return learningOutcomes
+      raw = learningOutcomes
         .filter((lo) => allowedIds.has(String(lo.id)))
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .flatMap((lo) => (lo.criteria || []).map((c) => ({ ...c })));
     }
+  } else {
+    raw = legacyCriteria;
   }
 
-  // Fallback: legacy flat criteria
-  return legacyCriteria;
+  return raw.map(normalizeCriterionForDisplay).filter((c) => c.id);
 }
 
 /**

@@ -33,6 +33,8 @@ exports.createExam = AsyncHandler(async (req, res) => {
     passMark,
     totalMark,
     passCriteriaType,
+    scopeType,
+    learningOutcomeIds,
   } = req.body;
 
   // Validate passMark (0-100) if provided
