@@ -1,13 +1,12 @@
 const verifyToken = require("../utils/verifyToken");
 const Teacher = require("../model/Staff/Teacher");
+const authCache = require("../utils/authCache");
 
 const isTeacherLogin = async (req, res, next) => {
   try {
-    // get token from header
     const headerObj = req.headers;
     const token = headerObj?.authorization?.split(" ")[1];
 
-    // Check if token exists
     if (!token) {
       return res.status(401).json({
         status: "failed",
@@ -15,7 +14,6 @@ const isTeacherLogin = async (req, res, next) => {
       });
     }
 
-    //verify token
     const verify = verifyToken(token);
     if (!verify) {
       return res.status(401).json({
@@ -24,11 +22,18 @@ const isTeacherLogin = async (req, res, next) => {
       });
     }
 
-    //find teacher
+    const cached = authCache.get(token);
+    if (cached) {
+      req.userAuth = cached;
+      return next();
+    }
+
     const user = await Teacher.findOne({
       _id: verify.id,
-      isDeleted: { $ne: true }, // Ignore soft-deleted teachers
-    }).select("name email role");
+      isDeleted: { $ne: true },
+    })
+      .select("name email role")
+      .lean();
 
     if (!user) {
       return res.status(401).json({
@@ -37,7 +42,7 @@ const isTeacherLogin = async (req, res, next) => {
       });
     }
 
-    //save user id in req.obj
+    authCache.set(token, user);
     req.userAuth = user;
     next();
   } catch (error) {

@@ -3,6 +3,7 @@ const Admin = require("../model/Staff/Admin");
 const Teacher = require("../model/Staff/Teacher");
 const TeacherLogin = require("../model/Registry/TeacherLogin");
 const { getTenantModels } = require("../utils/tenantConnection");
+const authCache = require("../utils/authCache");
 
 /**
  * Allows either Admin or Teacher to access the route.
@@ -28,13 +29,22 @@ const isTeacherOrAdmin = async (req, res, next) => {
       });
     }
 
+    const cached = authCache.get(token);
+    if (cached) {
+      req.userAuth = cached;
+      return next();
+    }
+
     // Try Admin first (registry DB)
     const admin = await Admin.findOne({
       _id: verify.id,
       isDeleted: { $ne: true },
-    }).select("name email role schoolDbName");
+    })
+      .select("name email role schoolDbName")
+      .lean();
 
     if (admin) {
+      authCache.set(token, admin);
       req.userAuth = admin;
       return next();
     }
@@ -46,12 +56,14 @@ const isTeacherOrAdmin = async (req, res, next) => {
       const teacher = models && await models.Teacher.findOne({
         _id: verify.id,
         isDeleted: { $ne: true },
-      }).select("name email role");
+      })
+        .select("name email role")
+        .lean();
 
       if (teacher) {
-        req.userAuth = teacher.toObject ? teacher.toObject() : { ...teacher };
-        req.userAuth.schoolDbName = loginEntry.schoolDbName;
-        req.userAuth._id = teacher._id;
+        const userAuth = { ...teacher, schoolDbName: loginEntry.schoolDbName };
+        authCache.set(token, userAuth);
+        req.userAuth = userAuth;
         return next();
       }
     }
@@ -60,9 +72,12 @@ const isTeacherOrAdmin = async (req, res, next) => {
     const teacher = await Teacher.findOne({
       _id: verify.id,
       isDeleted: { $ne: true },
-    }).select("name email role");
+    })
+      .select("name email role")
+      .lean();
 
     if (teacher) {
+      authCache.set(token, teacher);
       req.userAuth = teacher;
       return next();
     }

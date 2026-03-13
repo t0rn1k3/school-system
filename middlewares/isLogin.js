@@ -1,6 +1,7 @@
 const verifyToken = require("../utils/verifyToken");
 const Admin = require("../model/Staff/Admin");
 const { getTenantModels } = require("../utils/tenantConnection");
+const authCache = require("../utils/authCache");
 
 const isLogin = async (req, res, next) => {
   try {
@@ -24,19 +25,29 @@ const isLogin = async (req, res, next) => {
       });
     }
 
+    const cached = authCache.get(token);
+    if (cached) {
+      req.userAuth = cached;
+      return next();
+    }
+
     let user;
     if (verify.schoolDbName) {
       const models = getTenantModels(verify.schoolDbName);
       user = models?.Admin && await models.Admin.findOne({
         _id: verify.id,
         isDeleted: { $ne: true },
-      }).select("name email role schoolDbName schoolName");
+      })
+        .select("name email role schoolDbName schoolName")
+        .lean();
     }
     if (!user) {
       user = await Admin.findOne({
         _id: verify.id,
         isDeleted: { $ne: true },
-      }).select("name email role schoolDbName schoolName");
+      })
+        .select("name email role schoolDbName schoolName")
+        .lean();
     }
 
     if (!user) {
@@ -47,7 +58,7 @@ const isLogin = async (req, res, next) => {
       });
     }
 
-    //save user id in req.obj
+    authCache.set(token, user);
     req.userAuth = user;
     next();
   } catch (error) {

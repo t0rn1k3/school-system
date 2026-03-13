@@ -26,6 +26,7 @@
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
     "multer": "^2.1.0",
+    "node-cache": "^5.1.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
