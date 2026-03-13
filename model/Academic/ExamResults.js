@@ -129,6 +129,11 @@ const examResultSchema = new Schema(
   },
 );
 
+examResultSchema.index({ studentId: 1 });
+examResultSchema.index({ exam: 1 });
+examResultSchema.index({ studentId: 1, exam: 1 });
+examResultSchema.index({ academicYear: 1 });
+
 const ExamResult = mongoose.model("ExamResult", examResultSchema);
 
 module.exports = ExamResult;

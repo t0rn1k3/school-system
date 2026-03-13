@@ -138,7 +138,8 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
 exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
   const AdminModel = req.tenantModels?.Admin || Admin;
   const admins = await AdminModel.find({ isDeleted: false })
-    .select("-password -createdAt -updatedAt");
+    .select("-password -createdAt -updatedAt")
+    .lean();
   res.status(200).json({
     status: "success",
     data: admins,
@@ -190,10 +191,10 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
   } else {
     const populated = await AdminModel.findOne({ _id: admin._id })
       .select("-password -createdAt -updatedAt")
-      .populate("academicYears")
-      .populate({ path: "programs", match: { isDeleted: { $ne: true } } })
-      .populate("yearGroups")
-      .populate("classLevels")
+      .populate("academicYears", "name fromYear toYear")
+      .populate({ path: "programs", match: { isDeleted: { $ne: true } }, select: "name code" })
+      .populate("yearGroups", "name")
+      .populate("classLevels", "name")
       .lean();
     admin.programs = populated?.programs || [];
     admin.yearGroups = populated?.yearGroups || [];

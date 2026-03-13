@@ -30,6 +30,9 @@ const academicTermSchema = new Schema(
   { timestamps: true },
 );
 
+academicTermSchema.index({ isDeleted: 1 });
+academicTermSchema.index({ createdBy: 1 });
+
 const AcademicTerm = mongoose.model("AcademicTerm", academicTermSchema);
 
 module.exports = AcademicTerm;

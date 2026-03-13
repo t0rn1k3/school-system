@@ -78,8 +78,10 @@ exports.getPrograms = AsyncHandler(async (req, res) => {
   const Program = getModel(req, "Program");
   // Only fetch non-deleted programs (handle documents without isDeleted field)
   const programs = await Program.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .select("name code description duration durationWeeks isDeleted")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Programs fetched successfully",
@@ -95,12 +97,15 @@ exports.getProgram = AsyncHandler(async (req, res) => {
   const Program = getModel(req, "Program");
   const program = await Program.findOne({
     _id: req.params.id,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  }).populate({
-    path: "modules",
-    match: { isDeleted: { $ne: true } },
-    populate: { path: "teachers", select: "name email teacherId" },
-  });
+    isDeleted: { $ne: true },
+  })
+    .populate({
+      path: "modules",
+      match: { isDeleted: { $ne: true } },
+      select: "name code type order startWeek",
+      populate: { path: "teachers", select: "name email teacherId" },
+    })
+    .lean();
 
   if (!program) {
     return res.status(404).json({

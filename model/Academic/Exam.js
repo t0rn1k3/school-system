@@ -121,6 +121,11 @@ const examSchema = new Schema(
   { timestamps: true },
 );
 
+examSchema.index({ program: 1 });
+examSchema.index({ module: 1 });
+examSchema.index({ academicYear: 1 });
+examSchema.index({ createdBy: 1 });
+
 const Exam = mongoose.model("Exam", examSchema);
 
 module.exports = Exam;

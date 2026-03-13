@@ -255,12 +255,10 @@ exports.getExams = AsyncHandler(async (req, res) => {
   if (req.userAuth && req.userAuth.role === "teacher") {
     filter.createdBy = req.userAuth._id;
   }
-  const exams = await Exam.find(filter).populate({
-    path: "questions",
-    populate: {
-      path: "createdBy",
-    },
-  });
+  const exams = await Exam.find(filter)
+    .populate("questions", "question correctAnswer questionType mark")
+    .populate("module", "name code")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Exams fetched successfully",
@@ -277,8 +275,9 @@ exports.getExam = AsyncHandler(async (req, res) => {
     filter.createdBy = req.userAuth._id;
   }
   const exam = await Exam.findOne(filter)
-    .populate("questions")
-    .populate("module");
+    .populate("questions", "question correctAnswer questionType mark options")
+    .populate("module", "name code")
+    .lean();
 
   if (!exam) {
     return res.status(404).json({

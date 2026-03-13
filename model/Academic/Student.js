@@ -103,7 +103,12 @@ const studentSchema = new mongoose.Schema(
   },
 );
 
-//model
+studentSchema.index({ studentId: 1 });
+studentSchema.index({ email: 1 });
+studentSchema.index({ program: 1 });
+studentSchema.index({ yearGroup: 1 });
+studentSchema.index({ academicYear: 1 });
+
 const Student = mongoose.model("Student", studentSchema);
 
 module.exports = Student;

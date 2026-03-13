@@ -96,6 +96,10 @@ const ProgramSchema = new Schema(
   },
   { timestamps: true },
 );
+
+ProgramSchema.index({ isDeleted: 1 });
+ProgramSchema.index({ createdBy: 1 });
+
 const Program = mongoose.model("Program", ProgramSchema);
 
 module.exports = Program;

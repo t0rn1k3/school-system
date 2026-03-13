@@ -100,10 +100,11 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
 exports.getYearGroups = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted year groups (handle documents without isDeleted field)
   const yearGroups = await YearGroup.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+    isDeleted: { $ne: true },
   })
     .populate("program", "name description")
-    .populate("academicYear", "name fromYear toYear");
+    .populate("academicYear", "name fromYear toYear")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Year groups fetched successfully",
@@ -118,10 +119,11 @@ exports.getYearGroups = AsyncHandler(async (req, res) => {
 exports.getYearGroup = AsyncHandler(async (req, res) => {
   const yearGroup = await YearGroup.findOne({
     _id: req.params.id,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+    isDeleted: { $ne: true },
   })
     .populate("program", "name description")
-    .populate("academicYear", "name fromYear toYear");
+    .populate("academicYear", "name fromYear toYear")
+    .lean();
 
   if (!yearGroup) {
     return res.status(404).json({

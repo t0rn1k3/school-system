@@ -31,7 +31,10 @@ const yearGroupSchema = new mongoose.Schema(
   },
 );
 
-//model
+yearGroupSchema.index({ program: 1 });
+yearGroupSchema.index({ academicYear: 1 });
+yearGroupSchema.index({ isDeleted: 1 });
+
 const YearGroup = mongoose.model("YearGroup", yearGroupSchema);
 
 module.exports = YearGroup;

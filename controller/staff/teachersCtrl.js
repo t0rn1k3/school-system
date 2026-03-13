@@ -160,9 +160,11 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
     filter.name = { $regex: req.query.name, $options: "i" };
   }
   const TeacherQuery = TeacherModel.find(filter)
+    .select("-password -createdAt -updatedAt")
     .populate("programs", "name code")
     .populate("modules", "name description")
-    .populate("yearGroups", "name");
+    .populate("yearGroups", "name")
+    .lean();
   //convert query strings to numbers
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
@@ -190,8 +192,7 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
       limit: limit,
     };
   }
-  // Only fetch non-deleted teachers (handle documents without isDeleted field)
-  const teachers = await TeacherQuery.skip(skip).limit(limit);
+  const teachers = await TeacherQuery.skip(skip).limit(limit).lean();
 
   res.status(200).json({
     totalTeachers,
@@ -209,13 +210,16 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
 
 exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
   const teacherId = req.params.teacherId;
-  const teacher = await Teacher.findOne({
+  const TeacherModel = getModel(req, "Teacher");
+  const teacher = await TeacherModel.findOne({
     _id: teacherId,
     isDeleted: { $ne: true },
   })
+    .select("-password -createdAt -updatedAt")
     .populate("programs", "name code")
     .populate("modules", "name description")
-    .populate("yearGroups", "name");
+    .populate("yearGroups", "name")
+    .lean();
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -235,14 +239,16 @@ exports.getSingleTeacherCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
-  const teacher = await Teacher.findOne({
+  const TeacherModel = getModel(req, "Teacher");
+  const teacher = await TeacherModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   })
     .select("-password -createdAt -updatedAt")
     .populate("programs", "name code")
     .populate("modules", "name description")
-    .populate("yearGroups", "name");
+    .populate("yearGroups", "name")
+    .lean();
   if (!teacher) {
     return res.status(404).json({
       status: "failed",

@@ -36,6 +36,9 @@ const subjectSchema = new Schema(
   { timestamps: true },
 );
 
+subjectSchema.index({ name: 1 });
+subjectSchema.index({ createdBy: 1 });
+
 const Subject = mongoose.model("Subject", subjectSchema);
 
 module.exports = Subject;

@@ -82,7 +82,7 @@ teacherRouter.put(
   isTeacher,
   teacherGradeProjectCtrl,
 );
-teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, getSingleTeacherCtrl);
+teacherRouter.get("/:teacherId/admin", isLogin, isAdmin, setTenantModels, getSingleTeacherCtrl);
 // Teacher updates own profile
 teacherRouter.put("/profile", isTeacherLogin, isTeacher, updateTeacherProfileCtrl);
 // Admin withdraw (delete) teacher - DELETE /api/v1/teachers/:teacherId

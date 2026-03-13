@@ -53,8 +53,10 @@ exports.createClassLevel = AsyncHandler(async (req, res) => {
 exports.getClassLevels = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted class levels (handle documents without isDeleted field)
   const classLevels = await ClassLevel.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .select("name order description")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Class levels fetched successfully",
@@ -69,8 +71,9 @@ exports.getClassLevels = AsyncHandler(async (req, res) => {
 exports.getClassLevel = AsyncHandler(async (req, res) => {
   const classLevel = await ClassLevel.findOne({
     _id: req.params.id,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .lean();
 
   if (!classLevel) {
     return res.status(404).json({

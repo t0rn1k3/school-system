@@ -49,6 +49,9 @@ const ClassLevelSchema = new Schema(
   { timestamps: true },
 );
 
+ClassLevelSchema.index({ isDeleted: 1 });
+ClassLevelSchema.index({ createdBy: 1 });
+
 const ClassLevel = mongoose.model("ClassLevel", ClassLevelSchema);
 
 module.exports = ClassLevel;

@@ -63,8 +63,10 @@ exports.createSubject = AsyncHandler(async (req, res) => {
 exports.getSubjects = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted subjects (handle documents without isDeleted field)
   const subjects = await Subject.find({
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .select("name description")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Subjects fetched successfully",
@@ -79,8 +81,9 @@ exports.getSubjects = AsyncHandler(async (req, res) => {
 exports.getSubject = AsyncHandler(async (req, res) => {
   const subject = await Subject.findOne({
     _id: req.params.id,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-  });
+    isDeleted: { $ne: true },
+  })
+    .lean();
 
   if (!subject) {
     return res.status(404).json({

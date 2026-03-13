@@ -81,7 +81,9 @@ const adminSchema = new mongoose.Schema(
   },
 );
 
-//model
+adminSchema.index({ email: 1 });
+adminSchema.index({ isDeleted: 1 });
+
 const Admin = mongoose.model("Admin", adminSchema);
 
 module.exports = Admin;

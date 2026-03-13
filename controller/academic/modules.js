@@ -233,7 +233,8 @@ exports.getModules = AsyncHandler(async (req, res) => {
   const modules = await Module.find(filter)
     .populate("program", "name code")
     .populate("teachers", "name email teacherId")
-    .sort({ order: 1, createdAt: 1 });
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
 
   res.status(200).json({
     status: "success",
@@ -252,7 +253,8 @@ exports.getModule = AsyncHandler(async (req, res) => {
     isDeleted: { $ne: true },
   })
     .populate("program", "name code durationWeeks")
-    .populate("teachers", "name email teacherId");
+    .populate("teachers", "name email teacherId")
+    .lean();
 
   if (!module) {
     return res.status(404).json({

@@ -113,7 +113,9 @@ const teacherSchema = new mongoose.Schema(
   },
 );
 
-//model
+teacherSchema.index({ email: 1 });
+teacherSchema.index({ isDeleted: 1 });
+
 const Teacher = mongoose.model("Teacher", teacherSchema);
 
 module.exports = Teacher;

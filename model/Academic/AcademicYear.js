@@ -54,7 +54,9 @@ const academicYearSchema = new mongoose.Schema(
   },
 );
 
-//model
+academicYearSchema.index({ isDeleted: 1 });
+academicYearSchema.index({ createdBy: 1 });
+
 const AcademicYear = mongoose.model("AcademicYear", academicYearSchema);
 
 module.exports = AcademicYear;

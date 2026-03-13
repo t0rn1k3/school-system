@@ -107,5 +107,10 @@ const moduleSchema = new Schema(
   { timestamps: true }
 );
 
+moduleSchema.index({ program: 1 });
+moduleSchema.index({ teachers: 1 });
+moduleSchema.index({ isDeleted: 1 });
+moduleSchema.index({ program: 1, isDeleted: 1 });
+
 const Module = mongoose.model("Module", moduleSchema);
 module.exports = Module;

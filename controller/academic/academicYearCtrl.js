@@ -63,7 +63,9 @@ exports.createAcademicYear = AsyncHandler(async (req, res) => {
 //@access Private
 exports.getAcademicYears = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted academic years
-  const academicYears = await AcademicYear.find({ isDeleted: false });
+  const academicYears = await AcademicYear.find({ isDeleted: false })
+    .select("name fromYear toYear isCurrent")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Academic years fetched successfully",
@@ -79,7 +81,8 @@ exports.getAcademicYear = AsyncHandler(async (req, res) => {
   const academiYear = await AcademicYear.findOne({
     _id: req.params.id,
     isDeleted: false,
-  });
+  })
+    .lean();
 
   if (!academiYear) {
     return res.status(404).json({

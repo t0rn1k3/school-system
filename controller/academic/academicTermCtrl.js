@@ -54,7 +54,9 @@ exports.createAcademicTerm = AsyncHandler(async (req, res) => {
 //@access Private
 exports.getAcademicTerms = AsyncHandler(async (req, res) => {
   // Only fetch non-deleted academic terms
-  const academicTerms = await AcademicTerm.find({ isDeleted: false });
+  const academicTerms = await AcademicTerm.find({ isDeleted: false })
+    .select("name description duration")
+    .lean();
   res.status(200).json({
     status: "success",
     message: "Academic terms fetched successfully",
@@ -70,7 +72,8 @@ exports.getAcademicTerm = AsyncHandler(async (req, res) => {
   const academicTerm = await AcademicTerm.findOne({
     _id: req.params.id,
     isDeleted: false,
-  });
+  })
+    .lean();
 
   if (!academicTerm) {
     return res.status(404).json({
