@@ -19,6 +19,7 @@ const {
 } = require("../../controller/academic/examResutlCtrl");
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
+const setTenantModels = require("../../middlewares/setTenantModels");
 const isTeacherLogin = require("../../middlewares/isTeacherLogin");
 const isTeacher = require("../../middlewares/isTeacher");
 const {
@@ -31,11 +32,12 @@ teacherRouter.post(
   "/admin/register",
   isLogin,
   isAdmin,
+  setTenantModels,
   adminRegisterTeacherCtrl,
 );
 
 teacherRouter.post("/login", teacherLoginCtrl);
-teacherRouter.get("/admin", isLogin, isAdmin, getTeachersCtrl);
+teacherRouter.get("/admin", isLogin, isAdmin, setTenantModels, getTeachersCtrl);
 teacherRouter.get("/profile", isTeacherLogin, isTeacher, getTeacherProfileCtrl);
 teacherRouter.get(
   "/students",

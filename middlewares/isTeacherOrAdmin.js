@@ -1,10 +1,12 @@
 const verifyToken = require("../utils/verifyToken");
 const Admin = require("../model/Staff/Admin");
 const Teacher = require("../model/Staff/Teacher");
+const TeacherLogin = require("../model/Registry/TeacherLogin");
+const { getTenantModels } = require("../utils/tenantConnection");
 
 /**
  * Allows either Admin or Teacher to access the route.
- * Use for academic read endpoints (programs, subjects, etc.) that teachers need for exam forms.
+ * Supports database-per-tenant: Admin has schoolDbName; Teacher resolved via TeacherLogin registry.
  */
 const isTeacherOrAdmin = async (req, res, next) => {
   try {
@@ -26,18 +28,35 @@ const isTeacherOrAdmin = async (req, res, next) => {
       });
     }
 
-    // Try Admin first
+    // Try Admin first (registry DB)
     const admin = await Admin.findOne({
       _id: verify.id,
       isDeleted: { $ne: true },
-    }).select("name email role");
+    }).select("name email role schoolDbName");
 
     if (admin) {
       req.userAuth = admin;
       return next();
     }
 
-    // Try Teacher
+    // Try Teacher: check registry for tenant, then fetch from tenant DB
+    const loginEntry = await TeacherLogin.findOne({ teacherId: verify.id });
+    if (loginEntry) {
+      const models = getTenantModels(loginEntry.schoolDbName);
+      const teacher = models && await models.Teacher.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      }).select("name email role");
+
+      if (teacher) {
+        req.userAuth = teacher.toObject ? teacher.toObject() : { ...teacher };
+        req.userAuth.schoolDbName = loginEntry.schoolDbName;
+        req.userAuth._id = teacher._id;
+        return next();
+      }
+    }
+
+    // Fallback: Teacher in default DB (legacy, no tenant)
     const teacher = await Teacher.findOne({
       _id: verify.id,
       isDeleted: { $ne: true },

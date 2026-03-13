@@ -65,6 +65,16 @@ const adminSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Database per school: each admin gets their own tenant DB (e.g. lms_school_xxx)
+    schoolDbName: {
+      type: String,
+      required: false,
+    },
+    // Display name for the school (e.g. "Central High School") – separate from technical schoolDbName
+    schoolName: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,

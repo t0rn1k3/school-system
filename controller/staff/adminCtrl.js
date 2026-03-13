@@ -1,6 +1,8 @@
 const AsyncHandler = require("express-async-handler");
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const Admin = require("../../model/Staff/Admin");
+const AdminLogin = require("../../model/Registry/AdminLogin");
 const Teacher = require("../../model/Staff/Teacher");
 const Student = require("../../model/Academic/Student");
 const Program = require("../../model/Academic/Program");
@@ -8,13 +10,14 @@ const Module = require("../../model/Academic/Module");
 const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
+const { bootstrapSchoolDatabase, getTenantModels } = require("../../utils/tenantConnection");
 
 //@desc Register admin
 //@route POST  api/v1/admins/register
 //@acess Private
 
 exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, schoolName } = req.body;
 
   // Validate input
   if (!name || !email || !password) {
@@ -23,23 +26,50 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user already exists (ignore soft-deleted records)
-  const existingUser = await Admin.findOne({
-    email: email.toLowerCase().trim(),
-    isDeleted: false,
-  });
+  const emailNorm = email.toLowerCase().trim();
 
-  if (existingUser) {
+  // Check if email already taken (registry + legacy lms)
+  const existingLogin = await AdminLogin.findOne({ email: emailNorm });
+  if (existingLogin) {
     return res.status(409).json({
+      status: "failed",
+      message: "User with this email already exists",
+    });
+  }
+  const existingLegacy = await Admin.findOne({ email: emailNorm, isDeleted: false });
+  if (existingLegacy) {
+    return res.status(409).json({
+      status: "failed",
       message: "User with this email already exists",
     });
   }
 
-  // Register user
-  const user = await Admin.create({
+  // Create school database first (admin goes inside it)
+  const schoolId = new mongoose.Types.ObjectId();
+  const schoolDbName = `lms_school_${schoolId}`;
+  try {
+    await bootstrapSchoolDatabase(schoolDbName);
+  } catch (err) {
+    console.error("Failed to bootstrap school database:", err);
+    return res.status(500).json({
+      status: "failed",
+      message: "Failed to create school. Please try again.",
+    });
+  }
+
+  // Create Admin inside the school database
+  const models = getTenantModels(schoolDbName);
+  const user = await models.Admin.create({
     name,
-    email: email.toLowerCase().trim(),
+    email: emailNorm,
     password: await hashPassword(password),
+    schoolDbName,
+    schoolName: (schoolName && String(schoolName).trim()) || name || "My School",
+  });
+
+  await AdminLogin.create({
+    email: emailNorm,
+    schoolDbName,
   });
 
   res.status(201).json({
@@ -49,6 +79,8 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      schoolName: user.schoolName,
+      schoolDbName,
     },
   });
 });
@@ -59,22 +91,41 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
 
 exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const emailNorm = email?.toLowerCase?.()?.trim();
 
-  const user = await Admin.findOne({ email });
+  const loginEntry = await AdminLogin.findOne({ email: emailNorm });
+  let user;
+
+  if (loginEntry) {
+    const models = getTenantModels(loginEntry.schoolDbName);
+    user = models?.Admin && await models.Admin.findOne({
+      email: emailNorm,
+      isDeleted: { $ne: true },
+    });
+  }
   if (!user) {
-    return res.json({ message: "Invalid ligin crendentials" });
+    user = await Admin.findOne({
+      email: emailNorm,
+      isDeleted: { $ne: true },
+    });
+  }
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid login credentials" });
   }
 
   const isMatched = await isPasswordMatched(password, user.password);
-
   if (!isMatched) {
-    return res.json({ message: "Invalid ligin crendentials" });
-  } else {
-    return res.json({
-      data: generateToken(user._id),
-      message: "Admin Logged in  successful",
-    });
+    return res.status(401).json({ message: "Invalid login credentials" });
   }
+
+  const token = generateToken(user._id, {
+    schoolDbName: user.schoolDbName || loginEntry?.schoolDbName || null,
+  });
+  return res.json({
+    data: token,
+    message: "Admin Logged in successfully",
+  });
 });
 
 //@desc all admins
@@ -82,8 +133,9 @@ exports.loginAdminCtrl = AsyncHandler(async (req, res) => {
 //@acess Private
 
 exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted admins
-  const admins = await Admin.find({ isDeleted: false });
+  const AdminModel = req.tenantModels?.Admin || Admin;
+  const admins = await AdminModel.find({ isDeleted: false })
+    .select("-password -createdAt -updatedAt");
   res.status(200).json({
     status: "success",
     data: admins,
@@ -96,19 +148,14 @@ exports.getAdminsCtrl = AsyncHandler(async (req, res) => {
 //@acess Private
 
 exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
-  const admin = await Admin.findOne({
+  const AdminModel = req.tenantModels?.Admin || Admin;
+  const admin = await AdminModel.findOne({
     _id: req.userAuth._id,
     isDeleted: false,
   })
     .select("-password -createdAt -updatedAt")
-    .populate("academicYears")
-    // .populate("academicTerms") // Vocational: academic terms not used
-    .populate({
-      path: "programs",
-      match: { isDeleted: { $ne: true } }, // Exclude soft-deleted programs
-    })
-    .populate("yearGroups")
-    .populate("classLevels");
+    .lean();
+
   if (!admin) {
     return res.status(404).json({
       status: "failed",
@@ -116,6 +163,41 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
       message: "Admin not found",
     });
   }
+
+  if (req.tenantModels) {
+    const ids = (arr) => (arr || []).filter(Boolean);
+    const [programs, yearGroups, classLevels, academicYears] = await Promise.all([
+      ids(admin.programs).length
+        ? req.tenantModels.Program.find({ _id: { $in: ids(admin.programs) }, isDeleted: { $ne: true } }).lean()
+        : [],
+      ids(admin.yearGroups).length
+        ? req.tenantModels.YearGroup.find({ _id: { $in: ids(admin.yearGroups) } }).lean()
+        : [],
+      ids(admin.classLevels).length
+        ? req.tenantModels.ClassLevel.find({ _id: { $in: ids(admin.classLevels) } }).lean()
+        : [],
+      ids(admin.academicYears).length
+        ? req.tenantModels.AcademicYear.find({ _id: { $in: ids(admin.academicYears) } }).lean()
+        : [],
+    ]);
+    admin.programs = programs;
+    admin.yearGroups = yearGroups;
+    admin.classLevels = classLevels;
+    admin.academicYears = academicYears;
+  } else {
+    const populated = await AdminModel.findOne({ _id: admin._id })
+      .select("-password -createdAt -updatedAt")
+      .populate("academicYears")
+      .populate({ path: "programs", match: { isDeleted: { $ne: true } } })
+      .populate("yearGroups")
+      .populate("classLevels")
+      .lean();
+    admin.programs = populated?.programs || [];
+    admin.yearGroups = populated?.yearGroups || [];
+    admin.classLevels = populated?.classLevels || [];
+    admin.academicYears = populated?.academicYears || [];
+  }
+
   res.status(200).json({
     status: "success",
     message: "Admin profile fetched successfully",
@@ -128,13 +210,14 @@ exports.getAdminProfileCtrl = AsyncHandler(async (req, res) => {
 //@acess Private
 
 exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
-  // If body is empty or has no fields, return current user data
+  const AdminModel = req.tenantModels?.Admin || Admin;
+
   if (
     !req.body ||
     typeof req.body !== "object" ||
     Object.keys(req.body).length === 0
   ) {
-    const admin = await Admin.findOne({
+    const admin = await AdminModel.findOne({
       _id: req.userAuth._id,
       isDeleted: false,
     }).select("-password -createdAt -updatedAt");
@@ -152,11 +235,10 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { email, password, name } = req.body;
+  const { email, password, name, schoolName } = req.body;
 
-  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
   if (email) {
-    const emailExist = await Admin.findOne({
+    const emailExist = await AdminModel.findOne({
       email: email.toLowerCase().trim(),
       _id: { $ne: req.userAuth._id }, // Exclude current user
       isDeleted: false, // Ignore soft-deleted admins
@@ -180,9 +262,9 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     const updateData = { password: hashedPassword };
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
+    if (schoolName !== undefined) updateData.schoolName = String(schoolName).trim() || undefined;
 
-    // Update admin with password
-    const admin = await Admin.findOneAndUpdate(
+    const admin = await AdminModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: false },
       updateData,
       {
@@ -209,9 +291,9 @@ exports.updateAdminCtrl = AsyncHandler(async (req, res) => {
     const updateData = {};
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
+    if (schoolName !== undefined) updateData.schoolName = String(schoolName).trim() || undefined;
 
-    // Update admin without password
-    const admin = await Admin.findOneAndUpdate(
+    const admin = await AdminModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: false },
       updateData,
       {

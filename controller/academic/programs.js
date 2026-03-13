@@ -1,7 +1,7 @@
 const path = require("path");
 const AsyncHandler = require("express-async-handler");
 const XLSX = require("xlsx");
-const Admin = require("../../model/Staff/Admin");
+const getModel = require("../../utils/getModel");
 
 const CURRICULUM_TRANSLATIONS = (() => {
   try {
@@ -10,8 +10,6 @@ const CURRICULUM_TRANSLATIONS = (() => {
     return null;
   }
 })();
-const Module = require("../../model/Academic/Module");
-const Program = require("../../model/Academic/Program");
 const {
   getWeekLabels,
   getEffectiveWeeklyHours,
@@ -25,6 +23,7 @@ const {
 //@access Private
 
 exports.createProgram = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   // Validate request body exists
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
@@ -59,10 +58,12 @@ exports.createProgram = AsyncHandler(async (req, res) => {
     createdBy: req.userAuth._id,
   });
 
-  // push the program to the admin
-  const admin = await Admin.findById(req.userAuth._id);
-  admin.programs.push(programCreated._id);
-  admin.save();
+  const AdminModel = getModel(req, "Admin");
+  const admin = await AdminModel.findById(req.userAuth._id);
+  if (admin) {
+    admin.programs.push(programCreated._id);
+    await admin.save();
+  }
   res.status(201).json({
     status: "success",
     message: "Program created successfully",
@@ -74,6 +75,7 @@ exports.createProgram = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/programs
 //@access Private
 exports.getPrograms = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   // Only fetch non-deleted programs (handle documents without isDeleted field)
   const programs = await Program.find({
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
@@ -90,6 +92,7 @@ exports.getPrograms = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getProgram = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   const program = await Program.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
@@ -119,6 +122,7 @@ exports.getProgram = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.updateProgram = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   // Validate request body exists
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
@@ -201,6 +205,7 @@ function teacherCanAccessProgram(program, teacherId) {
 //@access Private (Teacher or Admin; Teacher only if they teach at least one module)
 
 exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   const program = await Program.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
@@ -264,6 +269,8 @@ exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
 //@access Private Admin
 
 exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
+  const Module = getModel(req, "Module");
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -395,6 +402,8 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
 //@access Private Admin
 
 exports.resetProgramCurriculum = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
+  const Module = getModel(req, "Module");
   const program = await Program.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
@@ -515,6 +524,7 @@ function getCurriculumLocale(req) {
 //@access Private (Teacher or Admin)
 
 exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   const locale = getCurriculumLocale(req);
   const L = getCurriculumLabels(locale);
 
@@ -630,6 +640,7 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.deleteProgram = AsyncHandler(async (req, res) => {
+  const Program = getModel(req, "Program");
   // Soft delete: Set isDeleted to true instead of hard delete
   const program = await Program.findByIdAndUpdate(
     req.params.id,
@@ -647,8 +658,8 @@ exports.deleteProgram = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Remove program from all admins' programs array so it no longer appears in profile
-  await Admin.updateMany(
+  const AdminModel = getModel(req, "Admin");
+  await AdminModel.updateMany(
     { programs: req.params.id },
     { $pull: { programs: req.params.id } },
   );

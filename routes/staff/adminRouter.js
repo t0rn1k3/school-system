@@ -31,21 +31,19 @@ const {
 } = require("../../controller/academic/questionCtrl");
 const isLogin = require("../../middlewares/isLogin");
 const isAdmin = require("../../middlewares/isAdmin");
-//register
+const setTenantModels = require("../../middlewares/setTenantModels");
 
+//register (no auth - creates new school + admin)
 adminRouter.post("/register", registerAdminCtrl);
 
 //login
-
 adminRouter.post("/login", loginAdminCtrl);
 
-//get all
+//get all (tenant: returns admins from current school DB)
+adminRouter.get("/", isLogin, setTenantModels, getAdminsCtrl);
 
-adminRouter.get("/", isLogin, getAdminsCtrl);
-
-//get single
-
-adminRouter.get("/profile", isLogin, isAdmin, getAdminProfileCtrl);
+//get single (admin profile - uses tenant DB for populated data)
+adminRouter.get("/profile", isLogin, isAdmin, setTenantModels, getAdminProfileCtrl);
 
 adminRouter.get("/exam-results", isLogin, isAdmin, adminGetAllExamResultsCtrl);
 adminRouter.get(
@@ -64,8 +62,7 @@ adminRouter.post("/questions/:examId", isLogin, isAdmin, createQuestion);
 adminRouter.put("/questions/:id", isLogin, isAdmin, updateQuestion);
 
 //update
-
-adminRouter.put("/", isLogin, isAdmin, updateAdminCtrl);
+adminRouter.put("/", isLogin, isAdmin, setTenantModels, updateAdminCtrl);
 
 // delete
 

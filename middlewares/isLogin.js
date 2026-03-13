@@ -1,13 +1,12 @@
 const verifyToken = require("../utils/verifyToken");
 const Admin = require("../model/Staff/Admin");
+const { getTenantModels } = require("../utils/tenantConnection");
 
 const isLogin = async (req, res, next) => {
   try {
-    // get token from header
     const headerObj = req.headers;
     const token = headerObj?.authorization?.split(" ")[1];
 
-    // Check if token exists
     if (!token) {
       return res.status(401).json({
         status: "failed",
@@ -16,7 +15,6 @@ const isLogin = async (req, res, next) => {
       });
     }
 
-    //verify token
     const verify = verifyToken(token);
     if (!verify) {
       return res.status(401).json({
@@ -26,11 +24,20 @@ const isLogin = async (req, res, next) => {
       });
     }
 
-    //find admin
-    const user = await Admin.findOne({
-      _id: verify.id,
-      isDeleted: { $ne: true }, // Ignore soft-deleted admins
-    }).select("name email role");
+    let user;
+    if (verify.schoolDbName) {
+      const models = getTenantModels(verify.schoolDbName);
+      user = models?.Admin && await models.Admin.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      }).select("name email role schoolDbName schoolName");
+    }
+    if (!user) {
+      user = await Admin.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      }).select("name email role schoolDbName schoolName");
+    }
 
     if (!user) {
       return res.status(401).json({

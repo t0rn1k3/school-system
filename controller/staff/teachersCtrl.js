@@ -5,6 +5,9 @@ const Admin = require("../../model/Staff/Admin");
 const Program = require("../../model/Academic/Program");
 const Module = require("../../model/Academic/Module");
 const Student = require("../../model/Academic/Student");
+const TeacherLogin = require("../../model/Registry/TeacherLogin");
+const { getTenantModels } = require("../../utils/tenantConnection");
+const getModel = require("../../utils/getModel");
 
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
@@ -43,12 +46,22 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  //check if the teacher already exists
-  const teacher = await Teacher.findOne({
+  const TeacherModel = req.tenantModels?.Teacher || Teacher;
+
+  //check if the teacher already exists (registry for cross-tenant, or tenant/default)
+  const loginExists = await TeacherLogin.findOne({ email: email.toLowerCase().trim() });
+  if (loginExists) {
+    return res.status(409).json({
+      status: "failed",
+      messageKey: "teacher.already_exists",
+      message: "Teacher already exists",
+    });
+  }
+  const teacherExists = await TeacherModel.findOne({
     email: email.toLowerCase().trim(),
-    isDeleted: { $ne: true }, // Ignore soft-deleted teachers
+    isDeleted: { $ne: true },
   });
-  if (teacher) {
+  if (teacherExists) {
     return res.status(409).json({
       status: "failed",
       messageKey: "teacher.already_exists",
@@ -56,17 +69,22 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  //hash password
   const hashedPassword = await hashPassword(password);
 
-  //create teacher
-  const teacherCreated = await Teacher.create({
+  const teacherCreated = await TeacherModel.create({
     name,
     email: email.toLowerCase().trim(),
     password: hashedPassword,
   });
 
-  //push to the admin
+  if (adminFound.schoolDbName) {
+    await TeacherLogin.create({
+      email: email.toLowerCase().trim(),
+      schoolDbName: adminFound.schoolDbName,
+      teacherId: teacherCreated._id,
+    });
+  }
+
   adminFound.teachers.push(teacherCreated._id);
   await adminFound.save();
 
@@ -85,10 +103,25 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
 
 exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const emailNorm = email?.toLowerCase?.()?.trim();
 
-  //find the user
+  const loginEntry = await TeacherLogin.findOne({ email: emailNorm });
+  let teacher;
 
-  const teacher = await Teacher.findOne({ email });
+  if (loginEntry) {
+    const models = getTenantModels(loginEntry.schoolDbName);
+    teacher = models?.Teacher && await models.Teacher.findOne({
+      _id: loginEntry.teacherId,
+      isDeleted: { $ne: true },
+    });
+  }
+  if (!teacher) {
+    teacher = await Teacher.findOne({
+      email: emailNorm,
+      isDeleted: { $ne: true },
+    });
+  }
+
   if (!teacher) {
     return res.status(401).json({
       status: "failed",
@@ -98,20 +131,22 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
   }
 
   const isMatched = await isPasswordMatched(password, teacher.password);
-
   if (!isMatched) {
     return res.status(401).json({
       status: "failed",
       messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
-  } else {
-    return res.status(200).json({
-      status: "success",
-      message: "Teacher logged in successfully",
-      data: generateToken(teacher._id),
-    });
   }
+
+  const schoolDbName = loginEntry?.schoolDbName || null;
+  const token = generateToken(teacher._id, schoolDbName ? { schoolDbName } : {});
+
+  return res.status(200).json({
+    status: "success",
+    message: "Teacher logged in successfully",
+    data: token,
+  });
 });
 
 //@dec get all teachers
@@ -119,11 +154,12 @@ exports.teacherLoginCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
+  const TeacherModel = getModel(req, "Teacher");
   const filter = { isDeleted: { $ne: true } };
   if (req.query.name && typeof req.query.name === "string") {
     filter.name = { $regex: req.query.name, $options: "i" };
   }
-  const TeacherQuery = Teacher.find(filter)
+  const TeacherQuery = TeacherModel.find(filter)
     .populate("programs", "name code")
     .populate("modules", "name description")
     .populate("yearGroups", "name");
