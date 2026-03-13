@@ -11,6 +11,7 @@ const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
 const { bootstrapSchoolDatabase, getTenantModels } = require("../../utils/tenantConnection");
+const { buildSchoolDbName } = require("../../utils/schoolDbName");
 
 //@desc Register admin
 //@route POST  api/v1/admins/register
@@ -44,9 +45,11 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Create school database first (admin goes inside it)
+  const displayName = (schoolName && String(schoolName).trim()) || name || "My School";
+
+  // Create school database: name includes school name for readability (e.g. lms_central-high-school_a1b2c3d4)
   const schoolId = new mongoose.Types.ObjectId();
-  const schoolDbName = `lms_school_${schoolId}`;
+  const schoolDbName = buildSchoolDbName(displayName, schoolId.toString());
   try {
     await bootstrapSchoolDatabase(schoolDbName);
   } catch (err) {
@@ -64,7 +67,7 @@ exports.registerAdminCtrl = AsyncHandler(async (req, res) => {
     email: emailNorm,
     password: await hashPassword(password),
     schoolDbName,
-    schoolName: (schoolName && String(schoolName).trim()) || name || "My School",
+    schoolName: displayName,
   });
 
   await AdminLogin.create({
