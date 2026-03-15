@@ -32,7 +32,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     yearGroup,
     passMark,
     totalMark,
-    passCriteriaType,
+    /* CRITERIA_DISABLED: passCriteriaType, */
     scopeType,
     learningOutcomeIds,
   } = req.body;
@@ -100,17 +100,9 @@ exports.createExam = AsyncHandler(async (req, res) => {
       message: `examType must be one of: ${validExamTypes.join(", ")}`,
     });
   }
-  const validPassCriteriaTypes = ["percentage", "all-criteria"];
-  if (
-    passCriteriaType !== undefined &&
-    !validPassCriteriaTypes.includes(passCriteriaType)
-  ) {
-    return res.status(400).json({
-      status: "failed",
-      messageKey: "exam.invalid_pass_criteria",
-      message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
-    });
-  }
+  // CRITERIA_DISABLED: passCriteriaType validation - use percentage only
+  // const validPassCriteriaTypes = ["percentage", "all-criteria"];
+  // if (passCriteriaType !== undefined && !validPassCriteriaTypes.includes(passCriteriaType)) { ... }
 
   const validScopeTypes = ["single-lo", "multiple-los", "all-los"];
   const finalScopeType =
@@ -229,7 +221,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
     ...(yearGroup && { yearGroup }),
     ...(passMark !== undefined && { passMark: Number(passMark) }),
     ...(totalMark !== undefined && { totalMark: Number(totalMark) }),
-    ...(passCriteriaType && { passCriteriaType }),
+    // CRITERIA_DISABLED: ...(passCriteriaType && { passCriteriaType }), - always use default "percentage"
     scopeType: finalScopeType,
     learningOutcomeIds: finalScopeType === "all-los" ? [] : loIds,
     createdBy: req.userAuth._id,
@@ -323,7 +315,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
     yearGroup,
     passMark,
     totalMark,
-    passCriteriaType,
+    /* CRITERIA_DISABLED: passCriteriaType, */
     scopeType,
     learningOutcomeIds,
   } = req.body;
@@ -360,16 +352,8 @@ exports.updateExam = AsyncHandler(async (req, res) => {
       });
     }
   }
-  if (passCriteriaType !== undefined) {
-    const validPassCriteriaTypes = ["percentage", "all-criteria"];
-    if (!validPassCriteriaTypes.includes(passCriteriaType)) {
-      return res.status(400).json({
-        status: "failed",
-        messageKey: "exam.invalid_pass_criteria",
-        message: `passCriteriaType must be one of: ${validPassCriteriaTypes.join(", ")}`,
-      });
-    }
-  }
+  // CRITERIA_DISABLED: passCriteriaType validation
+  // if (passCriteriaType !== undefined) { ... }
 
   const validScopeTypes = ["single-lo", "multiple-los", "all-los"];
   if (scopeType !== undefined) {
@@ -471,7 +455,7 @@ exports.updateExam = AsyncHandler(async (req, res) => {
   if (description !== undefined) updateData.description = description;
   if (subject !== undefined) updateData.subject = subject;
   if (module !== undefined) updateData.module = module;
-  if (passCriteriaType !== undefined) updateData.passCriteriaType = passCriteriaType;
+  // CRITERIA_DISABLED: if (passCriteriaType !== undefined) updateData.passCriteriaType = passCriteriaType;
   if (scopeType !== undefined) {
     updateData.scopeType = scopeType;
     updateData.learningOutcomeIds = scopeType === "all-los" ? [] : loIds;

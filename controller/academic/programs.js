@@ -5,7 +5,9 @@ const getModel = require("../../utils/getModel");
 
 const CURRICULUM_TRANSLATIONS = (() => {
   try {
-    return require(path.join(__dirname, "../../curriculum-export-translations.json"));
+    return require(
+      path.join(__dirname, "../../curriculum-export-translations.json"),
+    );
   } catch {
     return null;
   }
@@ -33,7 +35,15 @@ exports.createProgram = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, duration, durationWeeks, startDate, holidays, classLevels } = req.body;
+  const {
+    name,
+    description,
+    duration,
+    durationWeeks,
+    startDate,
+    holidays,
+    classLevels,
+  } = req.body;
 
   // Check if name already exists (ignore soft-deleted records)
   const program = await Program.findOne({
@@ -137,7 +147,15 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description, duration, durationWeeks, startDate, holidays, classLevels } = req.body;
+  const {
+    name,
+    description,
+    duration,
+    durationWeeks,
+    startDate,
+    holidays,
+    classLevels,
+  } = req.body;
 
   // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
@@ -161,8 +179,10 @@ exports.updateProgram = AsyncHandler(async (req, res) => {
   if (description !== undefined) updateData.description = description;
   if (duration !== undefined) updateData.duration = duration;
   if (durationWeeks !== undefined) updateData.durationWeeks = durationWeeks;
-  if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
-  if (holidays !== undefined && Array.isArray(holidays)) updateData.holidays = holidays;
+  if (startDate !== undefined)
+    updateData.startDate = startDate ? new Date(startDate) : null;
+  if (holidays !== undefined && Array.isArray(holidays))
+    updateData.holidays = holidays;
   if (classLevels !== undefined && Array.isArray(classLevels))
     updateData.classLevels = classLevels;
   updateData.updatedBy = req.userAuth._id;
@@ -234,7 +254,8 @@ exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
       return res.status(403).json({
         status: "failed",
         messageKey: "program.curriculum_forbidden",
-        message: "You may only view curriculum for programs where you teach at least one module.",
+        message:
+          "You may only view curriculum for programs where you teach at least one module.",
       });
     }
   }
@@ -284,7 +305,12 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { durationWeeks, startDate, holidays, modules: modulesPayload } = req.body;
+  const {
+    durationWeeks,
+    startDate,
+    holidays,
+    modules: modulesPayload,
+  } = req.body;
 
   const program = await Program.findOne({
     _id: req.params.id,
@@ -303,9 +329,12 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
   }
 
   const updateData = {};
-  if (durationWeeks !== undefined) updateData.durationWeeks = Number(durationWeeks) || 0;
-  if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
-  if (holidays !== undefined && Array.isArray(holidays)) updateData.holidays = holidays;
+  if (durationWeeks !== undefined)
+    updateData.durationWeeks = Number(durationWeeks) || 0;
+  if (startDate !== undefined)
+    updateData.startDate = startDate ? new Date(startDate) : null;
+  if (holidays !== undefined && Array.isArray(holidays))
+    updateData.holidays = holidays;
 
   if (Object.keys(updateData).length > 0) {
     await Program.findByIdAndUpdate(req.params.id, updateData);
@@ -314,15 +343,22 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
   if (Array.isArray(modulesPayload) && modulesPayload.length > 0) {
     for (const item of modulesPayload) {
       const { moduleId, weeklyOverrides } = item;
-      if (!moduleId || !weeklyOverrides || typeof weeklyOverrides !== "object") continue;
+      if (!moduleId || !weeklyOverrides || typeof weeklyOverrides !== "object")
+        continue;
 
-      const mod = program.modules.find((m) => String(m._id) === String(moduleId));
+      const mod = program.modules.find(
+        (m) => String(m._id) === String(moduleId),
+      );
       if (!mod) continue;
 
-      const plain = weeklyOverrides instanceof Map ? Object.fromEntries(weeklyOverrides) : weeklyOverrides;
-      const existingPlain = mod.weeklyOverrides instanceof Map
-        ? Object.fromEntries(mod.weeklyOverrides)
-        : (mod.weeklyOverrides || {});
+      const plain =
+        weeklyOverrides instanceof Map
+          ? Object.fromEntries(weeklyOverrides)
+          : weeklyOverrides;
+      const existingPlain =
+        mod.weeklyOverrides instanceof Map
+          ? Object.fromEntries(mod.weeklyOverrides)
+          : mod.weeklyOverrides || {};
       const merged = { ...existingPlain };
       Object.entries(plain).forEach(([k, v]) => {
         const num = Number(v);
@@ -352,7 +388,7 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
       const filtered = filterWeeklyOverridesToRange(
         merged,
         mod.startWeek ?? 1,
-        mod.durationWeeks ?? 0
+        mod.durationWeeks ?? 0,
       );
       const map = new Map(Object.entries(filtered));
       await Module.findByIdAndUpdate(moduleId, {
@@ -497,18 +533,31 @@ function getCurriculumLabels(locale) {
     name: CH?.name ?? (lang === "ka" ? "სახელი" : "Name"),
     type: CH?.type ?? (lang === "ka" ? "ტიპი" : "Type"),
     total: CH?.total ?? (lang === "ka" ? "სულ" : "Total"),
-    contactHrs: CH?.contactHrs ?? (lang === "ka" ? "საკონტაქტო საათები" : "Contact Hrs"),
-    independentHrs: CH?.independentHrs ?? (lang === "ka" ? "დამოუკიდებელი საათები" : "Independent Hrs"),
-    assessmentHrs: CH?.assessmentHrs ?? (lang === "ka" ? "შეფასების საათები" : "Assessment Hrs"),
-    durationWeeks: CH?.durationWeeks ?? (lang === "ka" ? "ხანგრძლივობა (კვირა)" : "Duration Weeks"),
+    contactHrs:
+      CH?.contactHrs ?? (lang === "ka" ? "საკონტაქტო საათები" : "Contact Hrs"),
+    independentHrs:
+      CH?.independentHrs ??
+      (lang === "ka" ? "დამოუკიდებელი საათები" : "Independent Hrs"),
+    assessmentHrs:
+      CH?.assessmentHrs ??
+      (lang === "ka" ? "შეფასების საათები" : "Assessment Hrs"),
+    durationWeeks:
+      CH?.durationWeeks ??
+      (lang === "ka" ? "ხანგრძლივობა (კვირა)" : "Duration Weeks"),
     credits: CH?.credits ?? (lang === "ka" ? "კრედიტები" : "Credits"),
-    sheetName: T?.sheetName?.[lang] ?? (lang === "ka" ? "სასწავლო გეგმა" : "Curriculum"),
+    sheetName:
+      T?.sheetName?.[lang] ?? (lang === "ka" ? "სასწავლო გეგმა" : "Curriculum"),
     weekPrefix: WK?.prefix ?? (lang === "ka" ? "კვ" : "W"),
     moduleType: {
-      professional: MT?.professional ?? (lang === "ka" ? "პროფესიული" : "Professional"),
-      commonProfessional: MT?.commonProfessional ?? (lang === "ka" ? "საერთო პროფესიული" : "Common professional"),
+      professional:
+        MT?.professional ?? (lang === "ka" ? "პროფესიული" : "Professional"),
+      commonProfessional:
+        MT?.commonProfessional ??
+        (lang === "ka" ? "საერთო პროფესიული" : "Common professional"),
       general: MT?.general ?? (lang === "ka" ? "ზოგადი" : "General"),
-      integratedGeneral: MT?.integratedGeneral ?? (lang === "ka" ? "ინტეგრირებული ზოგადი" : "Integrated general"),
+      integratedGeneral:
+        MT?.integratedGeneral ??
+        (lang === "ka" ? "ინტეგრირებული ზოგადი" : "Integrated general"),
     },
   };
 }
@@ -556,7 +605,8 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
       return res.status(403).json({
         status: "failed",
         messageKey: "program.curriculum_forbidden",
-        message: "You may only download curriculum for programs where you teach at least one module.",
+        message:
+          "You may only download curriculum for programs where you teach at least one module.",
       });
     }
   }
@@ -568,7 +618,7 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
     : null;
   const weekLabels = Array.from(
     { length: totalWeeks },
-    (_, i) => weekLabelsRaw?.[i] || `${L.weekPrefix}${i + 1}`
+    (_, i) => weekLabelsRaw?.[i] || `${L.weekPrefix}${i + 1}`,
   );
 
   const modules = (program.modules || []).map((m) => {
@@ -624,16 +674,19 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, L.sheetName);
 
-  const programName = (program.name || "Curriculum").replace(/[\\/*?:\[\]]/g, "-");
+  const programName = (program.name || "Curriculum").replace(
+    /[\\/*?:\[\]]/g,
+    "-",
+  );
   const fileName = `${programName}_curriculum.xlsx`;
 
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="${encodeURIComponent(fileName)}"`
+    `attachment; filename="${encodeURIComponent(fileName)}"`,
   );
   res.setHeader(
     "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
 
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });

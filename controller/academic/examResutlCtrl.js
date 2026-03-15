@@ -1,5 +1,5 @@
 const AsyncHandler = require("express-async-handler");
-const { getEffectiveCriteriaForExam } = require("../../utils/learningOutcomesUtils");
+// CRITERIA_DISABLED: const { getEffectiveCriteriaForExam } = require("../../utils/learningOutcomesUtils");
 const path = require("path");
 const fs = require("fs");
 const ExamResult = require("../../model/Academic/ExamResults");
@@ -245,15 +245,14 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  let effectiveCriteria = [];
-  if (exam?.passCriteriaType === "all-criteria" && exam?.module) {
-    const moduleDoc =
-      typeof exam.module === "object" ? exam.module : await Module.findById(exam.module);
-    effectiveCriteria = getEffectiveCriteriaForExam(moduleDoc || {}, exam);
-  }
-
+  // CRITERIA_DISABLED: Criteria-based grading hidden; use percentage only. To restore, uncomment:
+  // let effectiveCriteria = [];
+  // if (exam?.passCriteriaType === "all-criteria" && exam?.module) {
+  //   const moduleDoc = typeof exam.module === "object" ? exam.module : await Module.findById(exam.module);
+  //   effectiveCriteria = getEffectiveCriteriaForExam(moduleDoc || {}, exam);
+  // }
   const data = examResult.toObject ? examResult.toObject() : { ...examResult };
-  data.effectiveCriteria = effectiveCriteria;
+  data.effectiveCriteria = []; // CRITERIA_DISABLED: was effectiveCriteria
 
   res.status(200).json({
     status: "success",
@@ -543,9 +542,10 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { score, totalMark, status, remarks, criterionResults } = req.body;
+  const { score, totalMark, status, remarks /* CRITERIA_DISABLED: , criterionResults */ } = req.body;
   const exam = examResult.exam;
-  const passCriteriaType = exam?.passCriteriaType || "percentage";
+  // CRITERIA_DISABLED: passCriteriaType - always use percentage
+  // const passCriteriaType = exam?.passCriteriaType || "percentage";
 
   let updatePayload = { isFullyGraded: true };
   let finalStatus;
@@ -554,46 +554,9 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
   let total;
   let grade;
 
-  if (
-    passCriteriaType === "all-criteria" &&
-    criterionResults &&
-    Array.isArray(criterionResults) &&
-    criterionResults.length > 0
-  ) {
-    // All-criteria mode: status = Passed only if ALL criterionResults.passed === true
-    const normalizedCriteria = criterionResults.map((c) => ({
-      criterionId: String(c.criterionId || c.id || ""),
-      criterionName: String(c.criterionName || c.name || ""),
-      passed: Boolean(c.passed),
-      notes: c.notes ? String(c.notes) : undefined,
-    }));
-
-    const allPassed = normalizedCriteria.every((c) => c.passed);
-    finalStatus = allPassed ? "Passed" : "Failed";
-
-    numScore = normalizedCriteria.filter((c) => c.passed).length;
-    total = normalizedCriteria.length;
-    grade = total > 0 ? (numScore / total) * 100 : 0;
-
-    if (grade >= 80) finalRemarks = "Excellent";
-    else if (grade >= 70) finalRemarks = "Very Good";
-    else if (grade >= 60) finalRemarks = "Good";
-    else if (grade >= 50) finalRemarks = "Average";
-
-    updatePayload = {
-      ...updatePayload,
-      criterionResults: normalizedCriteria,
-      score: numScore,
-      totalMark: total,
-      grade,
-      status: finalStatus,
-      remarks:
-        remarks && ["Excellent", "Very Good", "Good", "Average", "Poor"].includes(remarks)
-          ? remarks
-          : finalRemarks,
-    };
-  } else {
-    // Percentage mode: use score/totalMark
+  // CRITERIA_DISABLED: all-criteria branch commented out. Use percentage only.
+  // if (passCriteriaType === "all-criteria" && criterionResults && Array.isArray(criterionResults) && ...) { ... } else {
+  // Percentage mode: use score/totalMark
     if (score === undefined || !Number.isFinite(Number(score))) {
       return res.status(400).json({
         status: "failed",
@@ -639,15 +602,8 @@ exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
       status: finalStatus,
       remarks: finalRemarks,
     };
-    if (criterionResults && Array.isArray(criterionResults)) {
-      updatePayload.criterionResults = criterionResults.map((c) => ({
-        criterionId: String(c.criterionId || c.id || ""),
-        criterionName: String(c.criterionName || c.name || ""),
-        passed: Boolean(c.passed),
-        notes: c.notes ? String(c.notes) : undefined,
-      }));
-    }
-  }
+    // CRITERIA_DISABLED: criterionResults storage commented out
+    // if (criterionResults && Array.isArray(criterionResults)) { updatePayload.criterionResults = ...; }
 
   const updated = await ExamResult.findByIdAndUpdate(
     req.params.id,
