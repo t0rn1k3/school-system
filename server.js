@@ -1,5 +1,9 @@
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+const envPath = path.join(__dirname, ".env");
+require("dotenv").config({ path: envPath });
+if (!process.env.MONGO_URL) {
+  console.error("MONGO_URL missing. Tried loading from:", envPath);
+}
 const http = require("http");
 require("./config/dbConnect");
 const app = require("./app/app");
