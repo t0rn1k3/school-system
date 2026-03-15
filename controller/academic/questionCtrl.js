@@ -117,6 +117,7 @@ exports.createQuestion = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/questions
 //@access Private teachers only
 exports.getQuestions = AsyncHandler(async (req, res) => {
+  const Question = getModel(req, "Question");
   const questions = await Question.find();
   res.status(200).json({
     status: "success",
