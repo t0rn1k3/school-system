@@ -24,12 +24,22 @@ const adminRouterRoutes = require("../routes/staff/adminRouter");
 const app = express();
 
 //===Middlewares===
-// CORS: allow frontend origin from env (dev/prod)
-const frontendOrigin = process.env.FRONTEND_URL || "http://localhost:3000";
 app.use(
   cors({
-    origin: frontendOrigin,
+    origin: (origin, cb) => {
+      const allowed = [
+        "https://edum.ge",
+        "https://www.edum.ge",
+        ...(process.env.NODE_ENV !== "production"
+          ? ["http://localhost:3000"]
+          : []),
+      ];
+      if (!origin || allowed.includes(origin)) return cb(null, true);
+      return cb(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 // Parse JSON - skip multipart so Multer receives raw body for file uploads
