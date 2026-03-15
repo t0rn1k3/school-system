@@ -1,15 +1,11 @@
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET || "anykey", (err, decoded) => {
-    {
-      if (err) {
-        return false
-      } else {
-        return decoded;
-      }
-    }
-  });
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || "anykey");
+  } catch {
+    return false;
+  }
 };
 
 module.exports = verifyToken;

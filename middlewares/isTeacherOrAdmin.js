@@ -35,13 +35,25 @@ const isTeacherOrAdmin = async (req, res, next) => {
       return next();
     }
 
-    // Try Admin first (registry DB)
-    const admin = await Admin.findOne({
-      _id: verify.id,
-      isDeleted: { $ne: true },
-    })
-      .select("name email role schoolDbName")
-      .lean();
+    // Try Admin: tenant DB first (schoolDbName in token), then default DB
+    let admin;
+    if (verify.schoolDbName) {
+      const models = getTenantModels(verify.schoolDbName);
+      admin = models?.Admin && await models.Admin.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      })
+        .select("name email role schoolDbName schoolName")
+        .lean();
+    }
+    if (!admin) {
+      admin = await Admin.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      })
+        .select("name email role schoolDbName schoolName")
+        .lean();
+    }
 
     if (admin) {
       authCache.set(token, admin);
@@ -49,32 +61,45 @@ const isTeacherOrAdmin = async (req, res, next) => {
       return next();
     }
 
-    // Try Teacher: check registry for tenant, then fetch from tenant DB
-    const loginEntry = await TeacherLogin.findOne({ teacherId: verify.id });
-    if (loginEntry) {
-      const models = getTenantModels(loginEntry.schoolDbName);
-      const teacher = models && await models.Teacher.findOne({
+    // Try Teacher: tenant DB first (schoolDbName in token), then registry lookup, then default DB
+    let teacher;
+    if (verify.schoolDbName) {
+      const models = getTenantModels(verify.schoolDbName);
+      teacher = models?.Teacher && await models.Teacher.findOne({
         _id: verify.id,
         isDeleted: { $ne: true },
       })
         .select("name email role")
         .lean();
-
       if (teacher) {
-        const userAuth = { ...teacher, schoolDbName: loginEntry.schoolDbName };
-        authCache.set(token, userAuth);
-        req.userAuth = userAuth;
-        return next();
+        teacher = { ...teacher, schoolDbName: verify.schoolDbName };
       }
     }
 
-    // Fallback: Teacher in default DB (legacy, no tenant)
-    const teacher = await Teacher.findOne({
-      _id: verify.id,
-      isDeleted: { $ne: true },
-    })
-      .select("name email role")
-      .lean();
+    if (!teacher) {
+      const loginEntry = await TeacherLogin.findOne({ teacherId: verify.id });
+      if (loginEntry) {
+        const models = getTenantModels(loginEntry.schoolDbName);
+        const found = models?.Teacher && await models.Teacher.findOne({
+          _id: verify.id,
+          isDeleted: { $ne: true },
+        })
+          .select("name email role")
+          .lean();
+        if (found) {
+          teacher = { ...found, schoolDbName: loginEntry.schoolDbName };
+        }
+      }
+    }
+
+    if (!teacher) {
+      teacher = await Teacher.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      })
+        .select("name email role")
+        .lean();
+    }
 
     if (teacher) {
       authCache.set(token, teacher);

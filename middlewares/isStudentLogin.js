@@ -1,5 +1,7 @@
 const verifyToken = require("../utils/verifyToken");
 const Student = require("../model/Academic/Student");
+const StudentLogin = require("../model/Registry/StudentLogin");
+const { getTenantModels } = require("../utils/tenantConnection");
 const authCache = require("../utils/authCache");
 
 const isStudentLogin = async (req, res, next) => {
@@ -28,12 +30,45 @@ const isStudentLogin = async (req, res, next) => {
       return next();
     }
 
-    const user = await Student.findOne({
-      _id: verify.id,
-      isDeleted: { $ne: true },
-    })
-      .select("name email studentId")
-      .lean();
+    let user;
+
+    if (verify.schoolDbName) {
+      const models = getTenantModels(verify.schoolDbName);
+      user = models?.Student && await models.Student.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      })
+        .select("name email studentId")
+        .lean();
+      if (user) {
+        user = { ...user, schoolDbName: verify.schoolDbName };
+      }
+    }
+
+    if (!user) {
+      const loginEntry = await StudentLogin.findOne({ studentObjectId: verify.id });
+      if (loginEntry) {
+        const models = getTenantModels(loginEntry.schoolDbName);
+        const found = models?.Student && await models.Student.findOne({
+          _id: verify.id,
+          isDeleted: { $ne: true },
+        })
+          .select("name email studentId")
+          .lean();
+        if (found) {
+          user = { ...found, schoolDbName: loginEntry.schoolDbName };
+        }
+      }
+    }
+
+    if (!user) {
+      user = await Student.findOne({
+        _id: verify.id,
+        isDeleted: { $ne: true },
+      })
+        .select("name email studentId")
+        .lean();
+    }
 
     if (!user) {
       return res.status(401).json({
