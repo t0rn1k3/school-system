@@ -1,11 +1,7 @@
 const AsyncHandler = require("express-async-handler");
-// CRITERIA_DISABLED: const { getEffectiveCriteriaForExam } = require("../../utils/learningOutcomesUtils");
 const path = require("path");
 const fs = require("fs");
-const ExamResult = require("../../model/Academic/ExamResults");
-const Exam = require("../../model/Academic/Exam");
-const Module = require("../../model/Academic/Module");
-const Student = require("../../model/Academic/Student");
+const getModel = require("../../utils/getModel");
 const { checkAndGraduateStudent } = require("../../utils/graduationHelper");
 
 //@desc exam result checking
@@ -13,6 +9,8 @@ const { checkAndGraduateStudent } = require("../../utils/graduationHelper");
 //@access Private students only
 
 exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
+  const Student = getModel(req, "Student");
+  const ExamResult = getModel(req, "ExamResult");
   const studentFound = await Student.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
@@ -89,6 +87,7 @@ exports.checkExamResultCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
+  const ExamResult = getModel(req, "ExamResult");
   const results = await ExamResult.find({})
     .populate("exam")
     .populate("student", "name")
@@ -109,6 +108,8 @@ exports.adminGetAllExamResultsCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.getAllExamResultsCtrl = AsyncHandler(async (req, res) => {
+  const Student = getModel(req, "Student");
+  const ExamResult = getModel(req, "ExamResult");
   const studentFound = await Student.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
@@ -183,6 +184,8 @@ exports.adminToggleExamResult = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.teacherGetExamResultsCtrl = AsyncHandler(async (req, res) => {
+  const Exam = getModel(req, "Exam");
+  const ExamResult = getModel(req, "ExamResult");
   const teacherId = req.userAuth._id;
   const examsCreated = await Exam.find({
     createdBy: teacherId,
@@ -266,6 +269,7 @@ exports.teacherGetExamResultCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.teacherGradeExamResultCtrl = AsyncHandler(async (req, res) => {
+  const ExamResult = getModel(req, "ExamResult");
   const teacherId = req.userAuth._id;
   const examResult = await ExamResult.findById(req.params.id).populate("exam");
 
@@ -424,7 +428,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
 
   // Automatic graduation: if Passed, check if student has passed all program modules
   if (publishResult.status === "Passed" && publishResult.student?._id) {
-    await checkAndGraduateStudent(publishResult.student._id.toString());
+    await checkAndGraduateStudent(publishResult.student._id.toString(), req);
   }
 
   res.status(200).json({
@@ -439,6 +443,7 @@ exports.teacherPublishExamResultCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.teacherDownloadProjectCtrl = AsyncHandler(async (req, res) => {
+  const ExamResult = getModel(req, "ExamResult");
   const teacherId = req.userAuth._id;
   const examResult = await ExamResult.findById(req.params.id).populate("exam");
 
@@ -481,6 +486,7 @@ exports.teacherDownloadProjectCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.adminDownloadProjectCtrl = AsyncHandler(async (req, res) => {
+  const ExamResult = getModel(req, "ExamResult");
   const examResult = await ExamResult.findById(req.params.id);
 
   if (!examResult || !examResult.submittedFile?.path) {
@@ -513,6 +519,7 @@ exports.adminDownloadProjectCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.teacherGradeProjectCtrl = AsyncHandler(async (req, res) => {
+  const ExamResult = getModel(req, "ExamResult");
   const teacherId = req.userAuth._id;
   const examResult = await ExamResult.findById(req.params.id).populate("exam");
 

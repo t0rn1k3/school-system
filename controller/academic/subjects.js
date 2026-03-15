@@ -1,14 +1,14 @@
 const AsyncHandler = require("express-async-handler");
-const Admin = require("../../model/Staff/Admin");
-const Program = require("../../model/Academic/Program");
-const Subject = require("../../model/Academic/Subject");
+const getModel = require("../../utils/getModel");
 
 //@desc Create subject
 //@route POST /api/v1/subjects/:programId
 //@access Private
 
 exports.createSubject = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const Program = getModel(req, "Program");
+  const Subject = getModel(req, "Subject");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -17,9 +17,8 @@ exports.createSubject = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description /* academicTerm */ } = req.body; // Vocational: academicTerm not used
+  const { name, description } = req.body;
 
-  // Check if name already exists
   const programFound = await Program.findById(req.params.programId);
   if (!programFound) {
     return res.status(404).json({
@@ -37,17 +36,14 @@ exports.createSubject = AsyncHandler(async (req, res) => {
       message: "Subject already exists",
     });
   }
-  //create program
+
   const subjectCreated = await Subject.create({
     name,
     description,
-    // academicTerm, // Vocational: academic terms not used
     createdBy: req.userAuth._id,
   });
 
-  // push the program to the subject
   programFound.subjects.push(subjectCreated._id);
-  //save the program
   await programFound.save();
 
   res.status(201).json({
@@ -61,7 +57,7 @@ exports.createSubject = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/subjects
 //@access Private
 exports.getSubjects = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted subjects (handle documents without isDeleted field)
+  const Subject = getModel(req, "Subject");
   const subjects = await Subject.find({
     isDeleted: { $ne: true },
   })
@@ -79,11 +75,11 @@ exports.getSubjects = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getSubject = AsyncHandler(async (req, res) => {
+  const Subject = getModel(req, "Subject");
   const subject = await Subject.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
-  })
-    .lean();
+  }).lean();
 
   if (!subject) {
     return res.status(404).json({
@@ -100,12 +96,13 @@ exports.getSubject = AsyncHandler(async (req, res) => {
   });
 });
 
-//@desc Update program
+//@desc Update subject
 //@route PUT /api/v1/subjects/:id
 //@access Private
 
 exports.updateSubject = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const Subject = getModel(req, "Subject");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -114,14 +111,13 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
     });
   }
 
-  const { name, description /* academicTerm */ } = req.body; // Vocational: academicTerm not used
+  const { name, description } = req.body;
 
-  // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
     const createdSubjectFound = await Subject.findOne({
       name,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-      _id: { $ne: req.params.id }, // Exclude current subject
+      isDeleted: { $ne: true },
+      _id: { $ne: req.params.id },
     });
     if (createdSubjectFound) {
       return res.status(409).json({
@@ -132,22 +128,15 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Build update object with only provided fields
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
-  // if (academicTerm !== undefined) updateData.academicTerm = academicTerm; // Vocational: academic terms not used
   updateData.updatedBy = req.userAuth._id;
 
   const subject = await Subject.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-    },
+    { _id: req.params.id, isDeleted: { $ne: true } },
     updateData,
-    {
-      new: true,
-    },
+    { new: true },
   );
 
   if (!subject) {
@@ -165,17 +154,15 @@ exports.updateSubject = AsyncHandler(async (req, res) => {
   });
 });
 
-//@desc Delete program
+//@desc Delete subject
 //@route DELETE /api/v1/subjects/:id
 //@access Private
 
 exports.deleteSubject = AsyncHandler(async (req, res) => {
-  // Soft delete: Set isDeleted to true instead of hard delete
+  const Subject = getModel(req, "Subject");
   const subject = await Subject.findByIdAndUpdate(
     req.params.id,
-    {
-      isDeleted: true,
-    },
+    { isDeleted: true },
     { new: true },
   );
 

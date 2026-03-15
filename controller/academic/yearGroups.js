@@ -1,15 +1,16 @@
 const AsyncHandler = require("express-async-handler");
-const Admin = require("../../model/Staff/Admin");
-const AcademicYear = require("../../model/Academic/AcademicYear");
-const Program = require("../../model/Academic/Program");
-const YearGroup = require("../../model/Academic/YearGroup");
+const getModel = require("../../utils/getModel");
 
 //@desc Create year group
 //@route POST /api/v1/year-groups
 //@access Private
 
 exports.createYearGroup = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const YearGroup = getModel(req, "YearGroup");
+  const AcademicYear = getModel(req, "AcademicYear");
+  const Program = getModel(req, "Program");
+  const Admin = getModel(req, "Admin");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -20,7 +21,6 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
 
   const { name, academicYear, program } = req.body;
 
-  // Validate required fields
   if (!name || !academicYear) {
     return res.status(400).json({
       status: "failed",
@@ -29,10 +29,9 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Check if name already exists (ignore soft-deleted records)
   const yearGroupFound = await YearGroup.findOne({
     name,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+    isDeleted: { $ne: true },
   });
   if (yearGroupFound) {
     return res.status(409).json({
@@ -42,10 +41,9 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     });
   }
 
-  //find the academic year
   const academicYearFound = await AcademicYear.findOne({
     _id: academicYear,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+    isDeleted: { $ne: true },
   });
   if (!academicYearFound) {
     return res.status(404).json({
@@ -55,7 +53,6 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Validate program if provided
   if (program) {
     const programFound = await Program.findOne({
       _id: program,
@@ -70,7 +67,6 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     }
   }
 
-  //create year group
   const yearGroupCreated = await YearGroup.create({
     name,
     createdBy: req.userAuth._id,
@@ -78,14 +74,14 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
     ...(program && { program }),
   });
 
-  //push to the academic year
   academicYearFound.yearGroups.push(yearGroupCreated._id);
   await academicYearFound.save();
 
-  //find the admin
   const admin = await Admin.findById(req.userAuth._id);
-  admin.yearGroups.push(yearGroupCreated._id);
-  await admin.save();
+  if (admin) {
+    admin.yearGroups.push(yearGroupCreated._id);
+    await admin.save();
+  }
 
   res.status(201).json({
     status: "success",
@@ -98,7 +94,7 @@ exports.createYearGroup = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/year-groups
 //@access Private
 exports.getYearGroups = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted year groups (handle documents without isDeleted field)
+  const YearGroup = getModel(req, "YearGroup");
   const yearGroups = await YearGroup.find({
     isDeleted: { $ne: true },
   })
@@ -117,6 +113,7 @@ exports.getYearGroups = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getYearGroup = AsyncHandler(async (req, res) => {
+  const YearGroup = getModel(req, "YearGroup");
   const yearGroup = await YearGroup.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
@@ -140,12 +137,14 @@ exports.getYearGroup = AsyncHandler(async (req, res) => {
   });
 });
 
-//@desc Update program
+//@desc Update year group
 //@route PUT /api/v1/year-groups/:id
 //@access Private
 
 exports.updateYearGroup = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const YearGroup = getModel(req, "YearGroup");
+  const Program = getModel(req, "Program");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -156,12 +155,11 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
 
   const { name, academicYear, program } = req.body;
 
-  // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
     const createdYearGroupFound = await YearGroup.findOne({
       name,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-      _id: { $ne: req.params.id }, // Exclude current year group
+      isDeleted: { $ne: true },
+      _id: { $ne: req.params.id },
     });
     if (createdYearGroupFound) {
       return res.status(409).json({
@@ -172,7 +170,6 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Validate program if provided (null/empty allows unsetting)
   if (program !== undefined && program !== null && program !== "") {
     const programFound = await Program.findOne({
       _id: program,
@@ -187,7 +184,6 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Build update object with only provided fields
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (academicYear !== undefined) updateData.academicYear = academicYear;
@@ -197,12 +193,10 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
   const yearGroup = await YearGroup.findOneAndUpdate(
     {
       _id: req.params.id,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+      isDeleted: { $ne: true },
     },
     updateData,
-    {
-      new: true,
-    },
+    { new: true },
   )
     .populate("program", "name description")
     .populate("academicYear", "name fromYear toYear");
@@ -222,17 +216,15 @@ exports.updateYearGroup = AsyncHandler(async (req, res) => {
   });
 });
 
-//@desc Delete program
+//@desc Delete year group
 //@route DELETE /api/v1/year-groups/:id
 //@access Private
 
 exports.deleteYearGroup = AsyncHandler(async (req, res) => {
-  // Soft delete: Set isDeleted to true instead of hard delete
+  const YearGroup = getModel(req, "YearGroup");
   const yearGroup = await YearGroup.findByIdAndUpdate(
     req.params.id,
-    {
-      isDeleted: true,
-    },
+    { isDeleted: true },
     { new: true },
   );
 

@@ -1,13 +1,14 @@
 const AsyncHandler = require("express-async-handler");
-const Admin = require("../../model/Staff/Admin");
-const ClassLevel = require("../../model/Academic/ClassLever");
+const getModel = require("../../utils/getModel");
 
 //@desc Create class level
 //@route POST /api/v1/class-levels
 //@access Private
 
 exports.createClassLevel = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const ClassLevel = getModel(req, "ClassLevel");
+  const Admin = getModel(req, "Admin");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -17,10 +18,9 @@ exports.createClassLevel = AsyncHandler(async (req, res) => {
 
   const { name, description, duration } = req.body;
 
-  // Check if name already exists (ignore soft-deleted records)
   const classLevel = await ClassLevel.findOne({
     name,
-    isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
+    isDeleted: { $ne: true },
   });
   if (classLevel) {
     return res.status(409).json({
@@ -28,7 +28,7 @@ exports.createClassLevel = AsyncHandler(async (req, res) => {
       message: "Class level already exists",
     });
   }
-  //create class level
+
   const classLevelCreated = await ClassLevel.create({
     name,
     description,
@@ -36,10 +36,11 @@ exports.createClassLevel = AsyncHandler(async (req, res) => {
     createdBy: req.userAuth._id,
   });
 
-  // push the class level to the admin
   const admin = await Admin.findById(req.userAuth._id);
-  admin.classLevels.push(classLevelCreated._id);
-  admin.save();
+  if (admin) {
+    admin.classLevels.push(classLevelCreated._id);
+    await admin.save();
+  }
   res.status(201).json({
     status: "success",
     message: "Class level created successfully",
@@ -51,7 +52,7 @@ exports.createClassLevel = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/class-levels
 //@access Private
 exports.getClassLevels = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted class levels (handle documents without isDeleted field)
+  const ClassLevel = getModel(req, "ClassLevel");
   const classLevels = await ClassLevel.find({
     isDeleted: { $ne: true },
   })
@@ -69,11 +70,11 @@ exports.getClassLevels = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getClassLevel = AsyncHandler(async (req, res) => {
+  const ClassLevel = getModel(req, "ClassLevel");
   const classLevel = await ClassLevel.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
-  })
-    .lean();
+  }).lean();
 
   if (!classLevel) {
     return res.status(404).json({
@@ -94,7 +95,8 @@ exports.getClassLevel = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.updateClassLevel = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const ClassLevel = getModel(req, "ClassLevel");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -104,12 +106,11 @@ exports.updateClassLevel = AsyncHandler(async (req, res) => {
 
   const { name, description, duration } = req.body;
 
-  // Check if name already exists (ignore soft-deleted records and current record)
   if (name) {
     const createdClassLevelFound = await ClassLevel.findOne({
       name,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-      _id: { $ne: req.params.id }, // Exclude current class level
+      isDeleted: { $ne: true },
+      _id: { $ne: req.params.id },
     });
     if (createdClassLevelFound) {
       return res.status(409).json({
@@ -119,7 +120,6 @@ exports.updateClassLevel = AsyncHandler(async (req, res) => {
     }
   }
 
-  // Build update object with only provided fields
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
@@ -127,14 +127,9 @@ exports.updateClassLevel = AsyncHandler(async (req, res) => {
   updateData.updatedBy = req.userAuth._id;
 
   const classLevel = await ClassLevel.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      isDeleted: { $ne: true }, // Matches false, null, undefined, or doesn't exist
-    },
+    { _id: req.params.id, isDeleted: { $ne: true } },
     updateData,
-    {
-      new: true,
-    },
+    { new: true },
   );
 
   if (!classLevel) {
@@ -156,12 +151,10 @@ exports.updateClassLevel = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.deleteClassLevel = AsyncHandler(async (req, res) => {
-  // Soft delete: Set isDeleted to true instead of hard delete
+  const ClassLevel = getModel(req, "ClassLevel");
   const classLevel = await ClassLevel.findByIdAndUpdate(
     req.params.id,
-    {
-      isDeleted: true,
-    },
+    { isDeleted: true },
     { new: true },
   );
 

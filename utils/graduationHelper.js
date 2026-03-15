@@ -1,14 +1,16 @@
-const Student = require("../model/Academic/Student");
-const ExamResult = require("../model/Academic/ExamResults");
+const getModelDefault = require("./getModel");
 
 /**
  * Check if student has passed all modules in their program.
  * If so, set isGraduated = true and yearGraduated = current year.
- * Module is passed if at least one published ExamResult (exam.module = that module) has status "Passed".
  * @param {string} studentId - Student _id
- * @returns {Promise<{ graduated: boolean }>} - whether the student was graduated
+ * @param {Object} [req] - Express request for tenant model resolution
+ * @returns {Promise<{ graduated: boolean }>}
  */
-async function checkAndGraduateStudent(studentId) {
+async function checkAndGraduateStudent(studentId, req) {
+  const Student = req ? getModelDefault(req, "Student") : require("../model/Academic/Student");
+  const ExamResult = req ? getModelDefault(req, "ExamResult") : require("../model/Academic/ExamResults");
+
   const student = await Student.findById(studentId)
     .select("program isGraduated")
     .populate("program", "modules");

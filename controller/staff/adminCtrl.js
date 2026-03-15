@@ -3,15 +3,12 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const Admin = require("../../model/Staff/Admin");
 const AdminLogin = require("../../model/Registry/AdminLogin");
-const Teacher = require("../../model/Staff/Teacher");
-const Student = require("../../model/Academic/Student");
-const Program = require("../../model/Academic/Program");
-const Module = require("../../model/Academic/Module");
 const generateToken = require("../../utils/generateToken");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const verifyToken = require("../../utils/verifyToken");
 const { bootstrapSchoolDatabase, getTenantModels } = require("../../utils/tenantConnection");
 const { buildSchoolDbName } = require("../../utils/schoolDbName");
+const getModel = require("../../utils/getModel");
 
 //@desc Register admin
 //@route POST  api/v1/admins/register
@@ -363,6 +360,7 @@ const findTeacherQuery = (idParam) => {
 };
 
 exports.adminSuspendTeacherCtrl = AsyncHandler(async (req, res) => {
+  const Teacher = getModel(req, "Teacher");
   const idParam = req.params.id?.trim();
   if (!idParam) {
     return res.status(400).json({
@@ -395,6 +393,7 @@ exports.adminSuspendTeacherCtrl = AsyncHandler(async (req, res) => {
 //@access Private admin only
 
 exports.adminUnsupendTeacherCtrl = AsyncHandler(async (req, res) => {
+  const Teacher = getModel(req, "Teacher");
   const idParam = req.params.id?.trim();
   if (!idParam) {
     return res.status(400).json({
@@ -427,6 +426,10 @@ exports.adminUnsupendTeacherCtrl = AsyncHandler(async (req, res) => {
 //@access Private admin only
 
 exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  const Teacher = getModel(req, "Teacher");
+  const AdminModel = getModel(req, "Admin");
+  const Program = getModel(req, "Program");
+  const Module = getModel(req, "Module");
   const idParam = req.params.id?.trim();
   if (!idParam) {
     return res.status(400).json({
@@ -444,7 +447,7 @@ exports.adminWithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
     });
   }
   const teacherObjId = teacher._id;
-  await Admin.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await AdminModel.updateMany({}, { $pull: { teachers: teacherObjId } });
   await Program.updateMany({}, { $pull: { teachers: teacherObjId } });
   await Module.updateMany({}, { $pull: { teachers: teacherObjId } });
 
@@ -473,6 +476,7 @@ exports.adminUnwithdrawTeacherCtrl = AsyncHandler(async (req, res) => {
 //@access Private admin only
 
 exports.adminWithdrawStudentCtrl = AsyncHandler(async (req, res) => {
+  const Student = getModel(req, "Student");
   const studentId = req.params.id;
   const student = await Student.findByIdAndDelete(studentId);
   if (!student) {

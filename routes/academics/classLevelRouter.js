@@ -10,10 +10,11 @@ const ClassLevelRouter = express.Router();
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
 const isTeacherOrAdmin = require("../../middlewares/isTeacherOrAdmin");
+const setTenantModels = require("../../middlewares/setTenantModels");
 
-ClassLevelRouter.post("/", isLogin, isAdmin, createClassLevel);
-ClassLevelRouter.get("/", isTeacherOrAdmin, getClassLevels);
-ClassLevelRouter.get("/:id", isTeacherOrAdmin, getClassLevel);
-ClassLevelRouter.put("/:id", isLogin, isAdmin, updateClassLevel);
-ClassLevelRouter.delete("/:id", isLogin, isAdmin, deleteClassLevel);
+ClassLevelRouter.post("/", isLogin, isAdmin, setTenantModels, createClassLevel);
+ClassLevelRouter.get("/", isTeacherOrAdmin, setTenantModels, getClassLevels);
+ClassLevelRouter.get("/:id", isTeacherOrAdmin, setTenantModels, getClassLevel);
+ClassLevelRouter.put("/:id", isLogin, isAdmin, setTenantModels, updateClassLevel);
+ClassLevelRouter.delete("/:id", isLogin, isAdmin, setTenantModels, deleteClassLevel);
 module.exports = ClassLevelRouter;

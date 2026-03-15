@@ -45,21 +45,22 @@ adminRouter.get("/", isLogin, setTenantModels, getAdminsCtrl);
 //get single (admin profile - uses tenant DB for populated data)
 adminRouter.get("/profile", isLogin, isAdmin, setTenantModels, getAdminProfileCtrl);
 
-adminRouter.get("/exam-results", isLogin, isAdmin, adminGetAllExamResultsCtrl);
+adminRouter.get("/exam-results", isLogin, isAdmin, setTenantModels, adminGetAllExamResultsCtrl);
 adminRouter.get(
   "/exam-results/:id/download",
   isLogin,
   isAdmin,
+  setTenantModels,
   adminDownloadProjectCtrl,
 );
 
-adminRouter.get("/exams", isLogin, isAdmin, getExams);
-adminRouter.get("/exams/:id", isLogin, isAdmin, getExam);
+adminRouter.get("/exams", isLogin, isAdmin, setTenantModels, getExams);
+adminRouter.get("/exams/:id", isLogin, isAdmin, setTenantModels, getExam);
 
-adminRouter.get("/questions", isLogin, isAdmin, getQuestions);
-adminRouter.get("/questions/:id", isLogin, isAdmin, getQuestion);
-adminRouter.post("/questions/:examId", isLogin, isAdmin, createQuestion);
-adminRouter.put("/questions/:id", isLogin, isAdmin, updateQuestion);
+adminRouter.get("/questions", isLogin, isAdmin, setTenantModels, getQuestions);
+adminRouter.get("/questions/:id", isLogin, isAdmin, setTenantModels, getQuestion);
+adminRouter.post("/questions/:examId", isLogin, isAdmin, setTenantModels, createQuestion);
+adminRouter.put("/questions/:id", isLogin, isAdmin, setTenantModels, updateQuestion);
 
 //update
 adminRouter.put("/", isLogin, isAdmin, setTenantModels, updateAdminCtrl);
@@ -69,19 +70,19 @@ adminRouter.put("/", isLogin, isAdmin, setTenantModels, updateAdminCtrl);
 adminRouter.delete("/:id", deleteAdminCTRL);
 
 // suspend teacher (supports /teacher/:id and /teachers/:id)
-adminRouter.put("/suspend/teacher/:id", isLogin, isAdmin, adminSuspendTeacherCtrl);
-adminRouter.put("/suspend/teachers/:id", isLogin, isAdmin, adminSuspendTeacherCtrl);
+adminRouter.put("/suspend/teacher/:id", isLogin, isAdmin, setTenantModels, adminSuspendTeacherCtrl);
+adminRouter.put("/suspend/teachers/:id", isLogin, isAdmin, setTenantModels, adminSuspendTeacherCtrl);
 
 //unsuspend teacher
-adminRouter.put("/unsuspend/teacher/:id", isLogin, isAdmin, adminUnsupendTeacherCtrl);
-adminRouter.put("/unsuspend/teachers/:id", isLogin, isAdmin, adminUnsupendTeacherCtrl);
+adminRouter.put("/unsuspend/teacher/:id", isLogin, isAdmin, setTenantModels, adminUnsupendTeacherCtrl);
+adminRouter.put("/unsuspend/teachers/:id", isLogin, isAdmin, setTenantModels, adminUnsupendTeacherCtrl);
 
 // withdraw teacher (permanently deletes from database)
 // PUT and GET supported (some clients use GET by default)
-adminRouter.put("/withdraw/teacher/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
-adminRouter.get("/withdraw/teacher/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
-adminRouter.put("/withdraw/teachers/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
-adminRouter.get("/withdraw/teachers/:id", isLogin, isAdmin, adminWithdrawTeacherCtrl);
+adminRouter.put("/withdraw/teacher/:id", isLogin, isAdmin, setTenantModels, adminWithdrawTeacherCtrl);
+adminRouter.get("/withdraw/teacher/:id", isLogin, isAdmin, setTenantModels, adminWithdrawTeacherCtrl);
+adminRouter.put("/withdraw/teachers/:id", isLogin, isAdmin, setTenantModels, adminWithdrawTeacherCtrl);
+adminRouter.get("/withdraw/teachers/:id", isLogin, isAdmin, setTenantModels, adminWithdrawTeacherCtrl);
 
 //unwithdraw teacher (disabled - withdrawn teachers are deleted)
 adminRouter.put(
@@ -103,6 +104,7 @@ adminRouter.put(
   "/withdraw/students/:id",
   isLogin,
   isAdmin,
+  setTenantModels,
   adminWithdrawStudentCtrl,
 );
 

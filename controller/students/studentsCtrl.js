@@ -3,10 +3,10 @@ const Student = require("../../model/Academic/Student");
 const { hashPassword, isPasswordMatched } = require("../../utils/helpers");
 const generateToken = require("../../utils/generateToken");
 const bcrypt = require("bcryptjs");
-const Exam = require("../../model/Academic/Exam");
-const ExamResult = require("../../model/Academic/ExamResults");
 const Admin = require("../../model/Staff/Admin");
-const Module = require("../../model/Academic/Module");
+const StudentLogin = require("../../model/Registry/StudentLogin");
+const { getTenantModels } = require("../../utils/tenantConnection");
+const getModel = require("../../utils/getModel");
 
 //@desc Register student
 //@route POST /api/v1/students/admin/register
@@ -25,8 +25,12 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   const { name, email, password, program, yearGroup, academicYear, modules } =
     req.body;
 
-  // find admin
-  const adminFound = await Admin.findById(req.userAuth._id);
+  // find admin (tenant DB when admin has schoolDbName, else default)
+  const AdminModel = req.tenantModels?.Admin || Admin;
+  const adminFound = await AdminModel.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
   if (!adminFound) {
     return res.status(404).json({
       status: "failed",
@@ -45,7 +49,8 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   }
 
   //check if the student already exists
-  const student = await Student.findOne({
+  const StudentModel = req.tenantModels?.Student || Student;
+  const student = await StudentModel.findOne({
     email: email.toLowerCase().trim(),
     isDeleted: { $ne: true }, // Ignore soft-deleted students
   });
@@ -63,7 +68,7 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
   const modulesArray =
     Array.isArray(modules) && modules.length > 0 ? modules.filter((m) => m) : [];
 
-  const studentCreated = await Student.create({
+  const studentCreated = await StudentModel.create({
     name,
     email: email.toLowerCase().trim(),
     password: hashedPassword,
@@ -73,11 +78,17 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
     ...(modulesArray.length > 0 && { modules: modulesArray }),
   });
 
-  // push to the admin
   adminFound.students.push(studentCreated._id);
   await adminFound.save();
 
-  // send student data
+  if (adminFound.schoolDbName) {
+    await StudentLogin.create({
+      email: email.toLowerCase().trim(),
+      studentId: studentCreated.studentId,
+      schoolDbName: adminFound.schoolDbName,
+      studentObjectId: studentCreated._id,
+    });
+  }
 
   res.status(201).json({
     status: "success",
@@ -92,10 +103,25 @@ exports.adminRegisterStudentCtrl = AsyncHandler(async (req, res) => {
 
 exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const emailNorm = email?.toLowerCase?.()?.trim();
 
-  //find the user
+  const loginEntry = await StudentLogin.findOne({ email: emailNorm });
+  let student;
 
-  const student = await Student.findOne({ email });
+  if (loginEntry) {
+    const models = getTenantModels(loginEntry.schoolDbName);
+    student = models?.Student && await models.Student.findOne({
+      _id: loginEntry.studentObjectId,
+      isDeleted: { $ne: true },
+    });
+  }
+  if (!student) {
+    student = await Student.findOne({
+      email: emailNorm,
+      isDeleted: { $ne: true },
+    });
+  }
+
   if (!student) {
     return res.status(401).json({
       status: "failed",
@@ -105,20 +131,21 @@ exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
   }
 
   const isMatched = await isPasswordMatched(password, student.password);
-
   if (!isMatched) {
     return res.status(401).json({
       status: "failed",
       messageKey: "auth.invalid_credentials",
       message: "Invalid email or password",
     });
-  } else {
-    return res.status(200).json({
-      status: "success",
-      message: "Student logged in successfully",
-      data: generateToken(student._id),
-    });
   }
+
+  const schoolDbName = loginEntry?.schoolDbName || null;
+  const token = generateToken(student._id, schoolDbName ? { schoolDbName } : {});
+  return res.status(200).json({
+    status: "success",
+    message: "Student logged in successfully",
+    data: token,
+  });
 });
 
 //@dec student profile
@@ -126,7 +153,8 @@ exports.studentLoginCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
-  const student = await Student.findOne({
+  const StudentModel = getModel(req, "Student");
+  const student = await StudentModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   })
@@ -180,8 +208,8 @@ exports.getStudentProfileCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
-  // Only fetch non-deleted students (handle documents without isDeleted field)
-  const students = await Student.find({
+  const StudentModel = req.tenantModels?.Student || Student;
+  const students = await StudentModel.find({
     isDeleted: { $ne: true },
   })
     .populate("program", "name code")
@@ -199,6 +227,9 @@ exports.getStudentsCtrl = AsyncHandler(async (req, res) => {
 //@access Private (admin or student viewing own)
 
 exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
+  const StudentModel = getModel(req, "Student");
+  const ExamResult = getModel(req, "ExamResult");
+  const Module = getModel(req, "Module");
   const studentId = req.params.studentId;
   const userIsAdmin = req.userAuth?.role === "admin";
   const isOwnProfile =
@@ -213,7 +244,7 @@ exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const student = await Student.findById(studentId)
+  const student = await StudentModel.findById(studentId)
     .select("program isGraduated yearGraduated")
     .populate("program", "name modules");
 
@@ -302,7 +333,8 @@ exports.getGraduationStatusCtrl = AsyncHandler(async (req, res) => {
 
 exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
   const studentId = req.params.studentId;
-  const student = await Student.findOne({
+  const StudentModel = req.tenantModels?.Student || Student;
+  const student = await StudentModel.findOne({
     _id: studentId,
     isDeleted: { $ne: true },
   })
@@ -327,14 +359,13 @@ exports.getSingleStudentCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only (for profile) or Private admin only (for :studentId)
 
 exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
-  // Route is PUT /profile (no params) - student updates own profile via req.userAuth
-  // If body is empty or has no fields, return current user data
+  const StudentModel = getModel(req, "Student");
   if (
     !req.body ||
     typeof req.body !== "object" ||
     Object.keys(req.body).length === 0
   ) {
-    const student = await Student.findOne({
+    const student = await StudentModel.findOne({
       _id: req.userAuth._id,
       isDeleted: { $ne: true },
     }).select("-password -createdAt -updatedAt");
@@ -353,12 +384,11 @@ exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
 
   const { email, password, name } = req.body;
 
-  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
   if (email) {
-    const emailExist = await Student.findOne({
+    const emailExist = await StudentModel.findOne({
       email: email.toLowerCase().trim(),
-      _id: { $ne: req.userAuth._id }, // Exclude current user
-      isDeleted: { $ne: true }, // Ignore soft-deleted students
+      _id: { $ne: req.userAuth._id },
+      isDeleted: { $ne: true },
     });
     if (emailExist) {
       return res.status(409).json({
@@ -380,14 +410,10 @@ exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
 
-    // Update student with password
-    const student = await Student.findOneAndUpdate(
+    const student = await StudentModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: { $ne: true } },
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
 
     if (!student) {
@@ -406,19 +432,14 @@ exports.updateStudentProfileCtrl = AsyncHandler(async (req, res) => {
       data: student,
     });
   } else {
-    // Build update object with only provided fields (no password)
     const updateData = {};
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
 
-    // Update student without password
-    const student = await Student.findOneAndUpdate(
+    const student = await StudentModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: { $ne: true } },
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
 
     if (!student) {
@@ -451,9 +472,10 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   }
 
   const studentId = req.params.studentId;
+  const StudentModel = req.tenantModels?.Student || Student;
 
   // Find student (ignore soft-deleted)
-  const studentFound = await Student.findOne({
+  const studentFound = await StudentModel.findOne({
     _id: studentId,
     isDeleted: { $ne: true },
   });
@@ -511,7 +533,7 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) {
     // Check if email already exists (if email is being updated)
-    const emailExist = await Student.findOne({
+    const emailExist = await StudentModel.findOne({
       email: email.toLowerCase().trim(),
       _id: { $ne: studentId },
       isDeleted: { $ne: true },
@@ -545,12 +567,12 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
     });
   }
 
-  await Student.findByIdAndUpdate(studentId, updateData, {
+  await StudentModel.findByIdAndUpdate(studentId, updateData, {
     new: true,
     runValidators: true,
   });
 
-  const updatedStudent = await Student.findById(studentId)
+  const updatedStudent = await StudentModel.findById(studentId)
     .populate("program", "name code")
     .populate("modules", "name description")
     .populate("yearGroup");
@@ -567,7 +589,9 @@ exports.adminUpdateStudent = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
-  const studentFound = await Student.findOne({
+  const StudentModel = getModel(req, "Student");
+  const Exam = getModel(req, "Exam");
+  const studentFound = await StudentModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   }).select("academicYear yearGroup");
@@ -608,7 +632,10 @@ exports.getStudentExamsCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
-  const studentFound = await Student.findOne({
+  const StudentModel = getModel(req, "Student");
+  const Exam = getModel(req, "Exam");
+  const ExamResult = getModel(req, "ExamResult");
+  const studentFound = await StudentModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   });
@@ -668,8 +695,10 @@ exports.getStudentExamCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only
 
 exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
-  // get student
-  const studentFound = await Student.findById(req.userAuth?._id);
+  const StudentModel = getModel(req, "Student");
+  const Exam = getModel(req, "Exam");
+  const ExamResult = getModel(req, "ExamResult");
+  const studentFound = await StudentModel.findById(req.userAuth?._id);
   if (!studentFound) {
     return res.status(404).json({
       status: "failed",
@@ -889,9 +918,12 @@ exports.studentWriteExamCtrl = AsyncHandler(async (req, res) => {
 //@access Private students only (multipart/form-data, field: file)
 
 exports.submitProjectCtrl = AsyncHandler(async (req, res) => {
+  const StudentModel = getModel(req, "Student");
+  const Exam = getModel(req, "Exam");
+  const ExamResult = getModel(req, "ExamResult");
   const examId = req.params.examId;
 
-  const studentFound = await Student.findOne({
+  const studentFound = await StudentModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   });

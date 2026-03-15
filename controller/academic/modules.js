@@ -6,10 +6,8 @@ const {
   validateWeeklyOverrides,
   filterWeeklyOverridesToRange,
 } = require("../../utils/curriculumUtils");
-const {
-  normalizeLearningOutcomes,
-  migrateCriteriaToLearningOutcomes,
-} = require("../../utils/learningOutcomesUtils");
+// FUTURE: criteria & learningOutcomes - disabled for now
+// const { normalizeLearningOutcomes, migrateCriteriaToLearningOutcomes } = require("../../utils/learningOutcomesUtils");
 
 /**
  * weeklyOverrides semantics:
@@ -37,8 +35,6 @@ exports.createModule = AsyncHandler(async (req, res) => {
     name,
     description,
     program,
-    criteria,
-    learningOutcomes: learningOutcomesInput,
     order,
     teachers,
     code,
@@ -60,7 +56,10 @@ exports.createModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const programFound = await Program.findOne({
+  const ProgramModel = req.tenantModels?.Program || Program;
+  const ModuleModel = req.tenantModels?.Module || Module;
+
+  const programFound = await ProgramModel.findOne({
     _id: program,
     isDeleted: { $ne: true },
   });
@@ -72,7 +71,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  const moduleNameExists = await Module.findOne({
+  const moduleNameExists = await ModuleModel.findOne({
     name,
     program,
     isDeleted: { $ne: true },
@@ -82,34 +81,6 @@ exports.createModule = AsyncHandler(async (req, res) => {
       status: "failed",
       messageKey: "module.name_exists",
       message: "Module name already exists in this program",
-    });
-  }
-
-  let finalLearningOutcomes = [];
-  let finalCriteria = [];
-  if (learningOutcomesInput && Array.isArray(learningOutcomesInput) && learningOutcomesInput.length > 0) {
-    const validation = normalizeLearningOutcomes(learningOutcomesInput);
-    if (!validation.valid) {
-      return res.status(400).json({
-        status: "failed",
-        messageKey: "module.validation",
-        message: validation.message,
-      });
-    }
-    finalLearningOutcomes = validation.normalized;
-    finalCriteria = finalLearningOutcomes.flatMap((lo) => lo.criteria || []);
-  } else if (Array.isArray(criteria) && criteria.length > 0) {
-    finalLearningOutcomes = migrateCriteriaToLearningOutcomes(criteria);
-    finalCriteria = criteria.map((c, i) => ({
-      id: c.id || `c${i + 1}`,
-      name: c.name || "",
-      description: c.description || "",
-    }));
-  } else {
-    return res.status(400).json({
-      status: "failed",
-      messageKey: "module.learning_outcomes_required",
-      message: "At least one Learning Outcome (with criteria) or legacy criteria is required",
     });
   }
 
@@ -177,12 +148,10 @@ exports.createModule = AsyncHandler(async (req, res) => {
   const validTypes = ["professional", "commonProfessional", "general", "integratedGeneral"];
   const moduleType = validTypes.includes(type) ? type : "professional";
 
-  const moduleCreated = await Module.create({
+  const moduleCreated = await ModuleModel.create({
     name,
     description,
     program,
-    criteria: finalCriteria,
-    learningOutcomes: finalLearningOutcomes,
     order: typeof order === "number" ? order : 0,
     teachers: teachersArray,
     code: code || undefined,
@@ -201,7 +170,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
   programFound.modules.push(moduleCreated._id);
   await programFound.save();
 
-  const populated = await Module.findById(moduleCreated._id)
+  const populated = await ModuleModel.findById(moduleCreated._id)
     .populate("program", "name code")
     .populate("teachers", "name email teacherId");
 
@@ -218,6 +187,7 @@ exports.createModule = AsyncHandler(async (req, res) => {
 //@response Each module includes program (populated) so frontend can derive teacher's programs
 
 exports.getModules = AsyncHandler(async (req, res) => {
+  const ModuleModel = req.tenantModels?.Module || Module;
   const filter = { isDeleted: { $ne: true } };
   if (req.query.program) {
     filter.program = req.query.program;
@@ -230,7 +200,7 @@ exports.getModules = AsyncHandler(async (req, res) => {
     }
   }
 
-  const modules = await Module.find(filter)
+  const modules = await ModuleModel.find(filter)
     .populate("program", "name code")
     .populate("teachers", "name email teacherId")
     .sort({ order: 1, createdAt: 1 })
@@ -248,7 +218,8 @@ exports.getModules = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.getModule = AsyncHandler(async (req, res) => {
-  const module = await Module.findOne({
+  const ModuleModel = req.tenantModels?.Module || Module;
+  const module = await ModuleModel.findOne({
     _id: req.params.id,
     isDeleted: { $ne: true },
   })
@@ -284,11 +255,12 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     });
   }
 
+  const ModuleModel = req.tenantModels?.Module || Module;
+  const ProgramModel = req.tenantModels?.Program || Program;
+
   const {
     name,
     description,
-    criteria,
-    learningOutcomes: learningOutcomesInput,
     order,
     teachers,
     code,
@@ -302,7 +274,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
     weeklyOverrides: weeklyOverridesInput,
   } = req.body;
 
-  const existingModule = await Module.findById(req.params.id);
+  const existingModule = await ModuleModel.findById(req.params.id);
   if (!existingModule) {
     return res.status(404).json({
       status: "failed",
@@ -312,7 +284,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   }
 
   if (name) {
-    const moduleFound = await Module.findOne({
+    const moduleFound = await ModuleModel.findOne({
       name,
       program: existingModule.program,
       isDeleted: { $ne: true },
@@ -368,33 +340,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   if (description !== undefined) updateData.description = description;
   if (order !== undefined && Number.isFinite(Number(order)))
     updateData.order = Number(order);
-  if (learningOutcomesInput !== undefined) {
-    if (!Array.isArray(learningOutcomesInput) || learningOutcomesInput.length === 0) {
-      return res.status(400).json({
-        status: "failed",
-        messageKey: "module.learning_outcome_required",
-        message: "At least one Learning Outcome is required",
-      });
-    }
-    const validation = normalizeLearningOutcomes(learningOutcomesInput);
-    if (!validation.valid) {
-      return res.status(400).json({
-        status: "failed",
-        messageKey: "module.validation",
-        message: validation.message,
-      });
-    }
-    updateData.learningOutcomes = validation.normalized;
-    updateData.criteria = validation.normalized.flatMap((lo) => lo.criteria || []);
-  } else if (criteria !== undefined && Array.isArray(criteria)) {
-    const migrated = migrateCriteriaToLearningOutcomes(criteria);
-    updateData.learningOutcomes = migrated;
-    updateData.criteria = criteria.map((c, i) => ({
-      id: c.id || `c${i + 1}`,
-      name: c.name || "",
-      description: c.description || "",
-    }));
-  }
+  // FUTURE: criteria & learningOutcomes update logic - disabled for now
   if (teachers !== undefined && Array.isArray(teachers)) {
     updateData.teachers = teachers.filter((t) => t);
   }
@@ -433,7 +379,7 @@ exports.updateModule = AsyncHandler(async (req, res) => {
   }
   updateData.updatedBy = req.userAuth._id;
 
-  const module = await Module.findOneAndUpdate(
+  const module = await ModuleModel.findOneAndUpdate(
     { _id: req.params.id },
     updateData,
     { new: true },
@@ -461,7 +407,9 @@ exports.updateModule = AsyncHandler(async (req, res) => {
 //@access Private Admin
 
 exports.deleteModule = AsyncHandler(async (req, res) => {
-  const module = await Module.findById(req.params.id);
+  const ModuleModel = req.tenantModels?.Module || Module;
+  const ProgramModel = req.tenantModels?.Program || Program;
+  const module = await ModuleModel.findById(req.params.id);
   if (!module) {
     return res.status(404).json({
       status: "failed",
@@ -470,14 +418,14 @@ exports.deleteModule = AsyncHandler(async (req, res) => {
     });
   }
 
-  await Module.findByIdAndUpdate(
+  await ModuleModel.findByIdAndUpdate(
     req.params.id,
     { isDeleted: true },
     { new: true },
   );
 
   if (module.program) {
-    await Program.findByIdAndUpdate(module.program, {
+    await ProgramModel.findByIdAndUpdate(module.program, {
       $pull: { modules: module._id },
     });
   }

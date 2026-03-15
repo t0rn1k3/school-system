@@ -10,10 +10,11 @@ const SubjectRouter = express.Router();
 const isAdmin = require("../../middlewares/isAdmin");
 const isLogin = require("../../middlewares/isLogin");
 const isTeacherOrAdmin = require("../../middlewares/isTeacherOrAdmin");
+const setTenantModels = require("../../middlewares/setTenantModels");
 
-SubjectRouter.post("/:programId", isLogin, isAdmin, createSubject);
-SubjectRouter.get("/", isTeacherOrAdmin, getSubjects);
-SubjectRouter.get("/:id", isTeacherOrAdmin, getSubject);
-SubjectRouter.put("/:id", isLogin, isAdmin, updateSubject);
-SubjectRouter.delete("/:id", isLogin, isAdmin, deleteSubject);
+SubjectRouter.post("/:programId", isLogin, isAdmin, setTenantModels, createSubject);
+SubjectRouter.get("/", isTeacherOrAdmin, setTenantModels, getSubjects);
+SubjectRouter.get("/:id", isTeacherOrAdmin, setTenantModels, getSubject);
+SubjectRouter.put("/:id", isLogin, isAdmin, setTenantModels, updateSubject);
+SubjectRouter.delete("/:id", isLogin, isAdmin, setTenantModels, deleteSubject);
 module.exports = SubjectRouter;

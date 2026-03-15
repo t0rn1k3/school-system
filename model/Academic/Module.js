@@ -16,25 +16,24 @@ const moduleSchema = new Schema(
       ref: "Program",
       required: true,
     },
-    // Legacy: flat criteria (kept for backward compatibility; derive from learningOutcomes when present)
+    // FUTURE: criteria & learningOutcomes - disabled for now, will be restored later
     criteria: [
       {
-        id: { type: String, required: true },
-        name: { type: String, required: true },
+        id: { type: String },
+        name: { type: String },
         description: { type: String, default: "" },
       },
     ],
-    // Georgian vocational: Learning Outcomes, each with nested criteria
     learningOutcomes: [
       {
-        id: { type: String, required: true },
+        id: { type: String },
         order: { type: Number, default: 0 },
-        name: { type: String, required: true },
+        name: { type: String },
         description: { type: String, default: "" },
         criteria: [
           {
-            id: { type: String, required: true },
-            name: { type: String, required: true },
+            id: { type: String },
+            name: { type: String },
             description: { type: String, default: "" },
           },
         ],

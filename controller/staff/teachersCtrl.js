@@ -36,8 +36,12 @@ exports.adminRegisterTeacherCtrl = AsyncHandler(async (req, res) => {
       message: "Name, email, and password are required fields",
     });
   }
-  // find admin
-  const adminFound = await Admin.findById(req.userAuth._id);
+  // find admin (tenant DB when admin has schoolDbName, else default)
+  const AdminModel = req.tenantModels?.Admin || Admin;
+  const adminFound = await AdminModel.findOne({
+    _id: req.userAuth._id,
+    isDeleted: { $ne: true },
+  });
   if (!adminFound) {
     return res.status(404).json({
       status: "failed",
@@ -170,7 +174,7 @@ exports.getTeachersCtrl = AsyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   //get total number of teachers
-  const totalTeachers = await Teacher.countDocuments({
+  const totalTeachers = await TeacherModel.countDocuments({
     isDeleted: { $ne: true },
   });
 
@@ -269,7 +273,9 @@ exports.getTeacherProfileCtrl = AsyncHandler(async (req, res) => {
 //@query yearGroup (optional) - filter to single year group (must be in teacher's yearGroups)
 
 exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
-  const teacher = await Teacher.findOne({
+  const TeacherModel = getModel(req, "Teacher");
+  const StudentModel = getModel(req, "Student");
+  const teacher = await TeacherModel.findOne({
     _id: req.userAuth._id,
     isDeleted: { $ne: true },
   })
@@ -311,7 +317,7 @@ exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
     });
   }
 
-  const students = await Student.find({
+  const students = await StudentModel.find({
     yearGroup: { $in: allowedYearGroupIds },
     isWithdrawn: { $ne: true },
   })
@@ -354,15 +360,14 @@ exports.getTeacherStudentsCtrl = AsyncHandler(async (req, res) => {
 //@access Private teachers only
 
 exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
-  // Profile route: teacher updates own profile (req.userAuth from isTeacherLogin)
+  const TeacherModel = getModel(req, "Teacher");
 
-  // If body is empty or has no fields, return current user data
   if (
     !req.body ||
     typeof req.body !== "object" ||
     Object.keys(req.body).length === 0
   ) {
-    const teacher = await Teacher.findOne({
+    const teacher = await TeacherModel.findOne({
       _id: req.userAuth._id,
       isDeleted: { $ne: true },
     }).select("-password -createdAt -updatedAt");
@@ -381,12 +386,11 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
 
   const { email, password, name } = req.body;
 
-  // Check if email already exists (only if email is being updated, ignore soft-deleted records)
   if (email) {
-    const emailExist = await Teacher.findOne({
+    const emailExist = await TeacherModel.findOne({
       email: email.toLowerCase().trim(),
-      _id: { $ne: req.userAuth._id }, // Exclude current user
-      isDeleted: { $ne: true }, // Ignore soft-deleted teachers
+      _id: { $ne: req.userAuth._id },
+      isDeleted: { $ne: true },
     });
     if (emailExist) {
       return res.status(409).json({
@@ -397,25 +401,18 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
     }
   }
 
-  //check if user is updating password
   if (password) {
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Build update object with only provided fields
     const updateData = { password: hashedPassword };
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
 
-    // Update teacher with password
-    const teacher = await Teacher.findOneAndUpdate(
+    const teacher = await TeacherModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: { $ne: true } },
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
 
     if (!teacher) {
@@ -434,19 +431,14 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
       data: teacher,
     });
   } else {
-    // Build update object with only provided fields (no password)
     const updateData = {};
     if (email) updateData.email = email.toLowerCase().trim();
     if (name) updateData.name = name;
 
-    // Update teacher without password
-    const teacher = await Teacher.findOneAndUpdate(
+    const teacher = await TeacherModel.findOneAndUpdate(
       { _id: req.userAuth._id, isDeleted: { $ne: true } },
       updateData,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
 
     if (!teacher) {
@@ -469,7 +461,10 @@ exports.updateTeacherProfileCtrl = AsyncHandler(async (req, res) => {
 //@access Private admins only
 
 exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const TeacherModel = getModel(req, "Teacher");
+  const ProgramModel = getModel(req, "Program");
+  const ModuleModel = getModel(req, "Module");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -491,10 +486,9 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     email,
     password,
   } = req.body;
-  const teacherId = req.params.teacherId; // Fixed: was teacherID (wrong case)
+  const teacherId = req.params.teacherId;
 
-  // Find teacher (ignore soft-deleted)
-  const teacherFound = await Teacher.findOne({
+  const teacherFound = await TeacherModel.findOne({
     _id: teacherId,
     isDeleted: { $ne: true },
   });
@@ -545,8 +539,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     updateData.password = await bcrypt.hash(password.trim(), salt);
   }
   if (email !== undefined) {
-    // Check if email already exists (if email is being updated)
-    const emailExist = await Teacher.findOne({
+    const emailExist = await TeacherModel.findOne({
       email: email.toLowerCase().trim(),
       _id: { $ne: teacherId },
       isDeleted: { $ne: true },
@@ -570,17 +563,12 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     });
   }
 
-  // Update teacher with all fields at once
-  const updatedTeacher = await Teacher.findByIdAndUpdate(
+  const updatedTeacher = await TeacherModel.findByIdAndUpdate(
     teacherId,
     updateData,
-    {
-      new: true,
-      runValidators: true,
-    },
+    { new: true, runValidators: true },
   );
 
-  // Sync Program.teachers and Module.teachers when programs/modules are updated
   if (programs !== undefined || modules !== undefined) {
     const finalPrograms = updatedTeacher.programs || [];
     const finalModules = updatedTeacher.modules || [];
@@ -592,13 +580,13 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
       const toRemove = prevProgramIds.filter((id) => !newProgramIds.includes(id));
       const toAdd = newProgramIds.filter((id) => !prevProgramIds.includes(id));
       if (toRemove.length) {
-        await Program.updateMany(
+        await ProgramModel.updateMany(
           { _id: { $in: toRemove } },
           { $pull: { teachers: teacherObjId } },
         );
       }
       if (toAdd.length) {
-        await Program.updateMany(
+        await ProgramModel.updateMany(
           { _id: { $in: toAdd } },
           { $addToSet: { teachers: teacherObjId } },
         );
@@ -611,13 +599,13 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
       const toRemove = prevModuleIds.filter((id) => !newModuleIds.includes(id));
       const toAdd = newModuleIds.filter((id) => !prevModuleIds.includes(id));
       if (toRemove.length) {
-        await Module.updateMany(
+        await ModuleModel.updateMany(
           { _id: { $in: toRemove } },
           { $pull: { teachers: teacherObjId } },
         );
       }
       if (toAdd.length) {
-        await Module.updateMany(
+        await ModuleModel.updateMany(
           { _id: { $in: toAdd } },
           { $addToSet: { teachers: teacherObjId } },
         );
@@ -625,7 +613,7 @@ exports.adminUpdateTeacher = AsyncHandler(async (req, res) => {
     }
   }
 
-  const teacherWithPopulated = await Teacher.findById(teacherId)
+  const teacherWithPopulated = await TeacherModel.findById(teacherId)
     .populate("programs", "name code")
     .populate("modules", "name description")
     .populate("yearGroups", "name");
@@ -647,6 +635,10 @@ const findTeacherQuery = (idParam) => {
 };
 
 exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
+  const TeacherModel = getModel(req, "Teacher");
+  const AdminModel = getModel(req, "Admin");
+  const ProgramModel = getModel(req, "Program");
+  const ModuleModel = getModel(req, "Module");
   const idParam = req.params.teacherId?.trim();
   if (!idParam) {
     return res.status(400).json({
@@ -655,7 +647,7 @@ exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
       message: "Teacher ID is required",
     });
   }
-  const teacher = await Teacher.findOneAndDelete(findTeacherQuery(idParam));
+  const teacher = await TeacherModel.findOneAndDelete(findTeacherQuery(idParam));
   if (!teacher) {
     return res.status(404).json({
       status: "failed",
@@ -664,9 +656,9 @@ exports.withdrawTeacherCtrl = AsyncHandler(async (req, res) => {
     });
   }
   const teacherObjId = teacher._id;
-  await Admin.updateMany({}, { $pull: { teachers: teacherObjId } });
-  await Program.updateMany({}, { $pull: { teachers: teacherObjId } });
-  await Module.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await AdminModel.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await ProgramModel.updateMany({}, { $pull: { teachers: teacherObjId } });
+  await ModuleModel.updateMany({}, { $pull: { teachers: teacherObjId } });
 
   res.status(200).json({
     status: "success",

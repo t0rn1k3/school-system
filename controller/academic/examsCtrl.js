@@ -1,14 +1,15 @@
 const AsyncHandler = require("express-async-handler");
-const Exam = require("../../model/Academic/Exam");
-const Module = require("../../model/Academic/Module");
-const Teacher = require("../../model/Staff/Teacher");
+const getModel = require("../../utils/getModel");
 
 //@desc create exam
 //@route POST /api/v1/exams
 //@access Private teachers only
 
 exports.createExam = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const Exam = getModel(req, "Exam");
+  const Module = getModel(req, "Module");
+  const Teacher = getModel(req, "Teacher");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",
@@ -242,6 +243,7 @@ exports.createExam = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/exams
 //@access Private (teachers see own exams; admin via /admins/exams sees all)
 exports.getExams = AsyncHandler(async (req, res) => {
+  const Exam = getModel(req, "Exam");
   const filter = { isDeleted: { $ne: true } };
   // When called by teacher (isTeacherLogin), filter to their exams only
   if (req.userAuth && req.userAuth.role === "teacher") {
@@ -262,6 +264,7 @@ exports.getExams = AsyncHandler(async (req, res) => {
 //@route GET /api/v1/exams/:id
 //@access Private
 exports.getExam = AsyncHandler(async (req, res) => {
+  const Exam = getModel(req, "Exam");
   const filter = { _id: req.params.id, isDeleted: { $ne: true } };
   if (req.userAuth && req.userAuth.role === "teacher") {
     filter.createdBy = req.userAuth._id;
@@ -291,7 +294,9 @@ exports.getExam = AsyncHandler(async (req, res) => {
 //@access Private
 
 exports.updateExam = AsyncHandler(async (req, res) => {
-  // Validate request body exists
+  const Exam = getModel(req, "Exam");
+  const Module = getModel(req, "Module");
+
   if (!req.body || typeof req.body !== "object") {
     return res.status(400).json({
       status: "failed",

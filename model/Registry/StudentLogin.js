@@ -7,7 +7,8 @@ const mongoose = require("mongoose");
 
 const studentLoginSchema = new mongoose.Schema(
   {
-    studentId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    studentId: { type: String },
     schoolDbName: { type: String, required: true },
     studentObjectId: { type: mongoose.Schema.Types.ObjectId, required: true },
   },
