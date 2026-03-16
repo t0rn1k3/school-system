@@ -1,6 +1,9 @@
+/** MongoDB Atlas limits database names to 38 bytes. */
+const MAX_DB_BYTES = 38;
+
 /**
  * Generate a MongoDB database name from school name.
- * MongoDB limits: 64 bytes, cannot contain /\. "$*<>:|?
+ * MongoDB: max 38 bytes (Atlas), cannot contain /\. "$*<>:|?
  * Format: lms_<slug>_<shortId> for readability and uniqueness.
  */
 function slugifySchoolName(name) {
@@ -18,15 +21,32 @@ function slugifySchoolName(name) {
 }
 
 /**
- * @param {string} schoolName - Display name (e.g. "Central High School")
+ * Truncate string to fit within max byte length (UTF-8).
+ */
+function truncateToBytes(str, maxBytes) {
+  const buf = Buffer.from(str, "utf8");
+  if (buf.length <= maxBytes) return str;
+  let len = maxBytes;
+  while (len > 0 && (buf[len] & 0xc0) === 0x80) len--;
+  return buf.slice(0, len).toString("utf8");
+}
+
+/**
+ * @param {string} schoolName - Display name (e.g. "Central High School" or Georgian)
  * @param {string} uniqueId - ObjectId or similar for uniqueness (e.g. schoolId.toString())
- * @returns {string} e.g. "lms_central-high-school_a1b2c3d4" (max 64 chars for MongoDB)
+ * @returns {string} e.g. "lms_central-high-school_a1b2c3d4" (max 38 bytes for Atlas)
  */
 function buildSchoolDbName(schoolName, uniqueId) {
-  const slug = slugifySchoolName(schoolName);
   const id = String(uniqueId || "").slice(0, 8) || "00000000";
-  const dbName = `lms_${slug}_${id}`;
-  return dbName.length <= 64 ? dbName : dbName.slice(0, 64);
+  const prefix = "lms_";
+  const suffix = `_${id}`;
+  const prefixSuffixBytes = Buffer.byteLength(prefix + suffix, "utf8");
+  const maxSlugBytes = MAX_DB_BYTES - prefixSuffixBytes;
+
+  let slug = slugifySchoolName(schoolName);
+  slug = truncateToBytes(slug, maxSlugBytes) || "school";
+
+  return `${prefix}${slug}_${id}`;
 }
 
 module.exports = { slugifySchoolName, buildSchoolDbName };
