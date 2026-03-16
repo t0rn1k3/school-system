@@ -38,7 +38,7 @@ const isStudentLogin = async (req, res, next) => {
         _id: verify.id,
         isDeleted: { $ne: true },
       })
-        .select("name email studentId")
+        .select("name email studentId role")
         .lean();
       if (user) {
         user = { ...user, schoolDbName: verify.schoolDbName };
@@ -53,7 +53,7 @@ const isStudentLogin = async (req, res, next) => {
           _id: verify.id,
           isDeleted: { $ne: true },
         })
-          .select("name email studentId")
+          .select("name email studentId role")
           .lean();
         if (found) {
           user = { ...found, schoolDbName: loginEntry.schoolDbName };
@@ -66,7 +66,7 @@ const isStudentLogin = async (req, res, next) => {
         _id: verify.id,
         isDeleted: { $ne: true },
       })
-        .select("name email studentId")
+        .select("name email studentId role")
         .lean();
     }
 

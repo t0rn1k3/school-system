@@ -11,7 +11,7 @@ const isStudent = (req, res, next) => {
     });
   }
 
-  if (req.userAuth.role === "student") {
+  if (req.userAuth.role === "student" || req.userAuth.studentId) {
     return next();
   }
 
