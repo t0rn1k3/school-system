@@ -17,7 +17,6 @@ const {
   getEffectiveWeeklyHours,
   distributeHoursEvenly,
   validateWeeklyOverrides,
-  filterWeeklyOverridesToRange,
 } = require("../../utils/curriculumUtils");
 
 //@desc Create program
@@ -263,7 +262,7 @@ exports.getProgramCurriculum = AsyncHandler(async (req, res) => {
   const totalWeeks = program.durationWeeks || 0;
   const modules = (program.modules || []).map((m) => {
     const mod = m.toObject ? m.toObject() : { ...m };
-    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod);
+    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod, totalWeeks);
     return mod;
   });
 
@@ -369,6 +368,21 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
         }
       });
 
+      const programWeeks = Number(durationWeeks ?? program.durationWeeks) || 0;
+      if (programWeeks > 0) {
+        const outOfRange = Object.keys(merged).find((k) => {
+          const week = parseInt(String(k), 10);
+          return Number.isNaN(week) || week < 1 || week > programWeeks;
+        });
+        if (outOfRange) {
+          return res.status(400).json({
+            status: "failed",
+            messageKey: "module.weekly_hours_invalid",
+            message: `Weekly override week ${outOfRange} is out of program range (1-${programWeeks})`,
+          });
+        }
+      }
+
       const moduleForValidation = {
         contactHours: mod.contactHours ?? 0,
         assessmentHours: mod.assessmentHours ?? 0,
@@ -376,7 +390,11 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
         startWeek: mod.startWeek ?? 1,
         weeklyOverrides: merged,
       };
-      const validation = validateWeeklyOverrides(moduleForValidation);
+      const validation = validateWeeklyOverrides(moduleForValidation, {
+        restrictToModuleRange: false,
+        minWeek: 1,
+        maxWeek: programWeeks > 0 ? programWeeks : undefined,
+      });
       if (!validation.valid) {
         return res.status(400).json({
           status: "failed",
@@ -385,12 +403,7 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
         });
       }
 
-      const filtered = filterWeeklyOverridesToRange(
-        merged,
-        mod.startWeek ?? 1,
-        mod.durationWeeks ?? 0,
-      );
-      const map = new Map(Object.entries(filtered));
+      const map = new Map(Object.entries(merged));
       await Module.findByIdAndUpdate(moduleId, {
         weeklyOverrides: map,
         updatedBy: req.userAuth._id,
@@ -411,7 +424,7 @@ exports.updateProgramCurriculum = AsyncHandler(async (req, res) => {
   const totalWeeks = updatedProgram.durationWeeks || 0;
   const modules = (updatedProgram.modules || []).map((m) => {
     const mod = m.toObject ? m.toObject() : { ...m };
-    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod);
+    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod, totalWeeks);
     return mod;
   });
 
@@ -495,7 +508,7 @@ exports.resetProgramCurriculum = AsyncHandler(async (req, res) => {
   const totalWeeks = updatedProgram.durationWeeks || 0;
   const modules = (updatedProgram.modules || []).map((m) => {
     const mod = m.toObject ? m.toObject() : { ...m };
-    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod);
+    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod, totalWeeks);
     return mod;
   });
 
@@ -623,7 +636,7 @@ exports.downloadCurriculumXls = AsyncHandler(async (req, res) => {
 
   const modules = (program.modules || []).map((m) => {
     const mod = m.toObject ? m.toObject() : { ...m };
-    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod);
+    mod.effectiveWeeklyHours = getEffectiveWeeklyHours(mod, totalWeeks);
     return mod;
   });
 

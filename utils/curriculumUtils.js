@@ -52,14 +52,21 @@ function filterWeeklyOverridesToRange(weeklyOverrides, startWeek, durationWeeks)
 }
 
 /**
- * Validate that sum(weeklyOverrides) equals contactHours + assessmentHours within module date range.
+ * Validate that sum(weeklyOverrides) equals contactHours + assessmentHours.
  * Uses a small tolerance (0.01) for floating point comparison.
  * Note: Only contactHours and assessmentHours are summed; independentHours are excluded.
  *
+ * By default, validates only inside module week range.
+ * For curriculum-wide editing, pass { restrictToModuleRange: false, minWeek: 1, maxWeek: programWeeks }.
+ *
  * @param {Object} module - Module with contactHours, assessmentHours, durationWeeks, startWeek, weeklyOverrides
+ * @param {Object} options - Validation options
+ * @param {boolean} options.restrictToModuleRange - Default true. If false, uses min/max bounds.
+ * @param {number} options.minWeek - Optional inclusive lower week bound
+ * @param {number} options.maxWeek - Optional inclusive upper week bound
  * @returns {{ valid: boolean, message?: string, sum?: number, expected?: number }}
  */
-function validateWeeklyOverrides(module) {
+function validateWeeklyOverrides(module, options = {}) {
   const totalRequired = (Number(module.contactHours) || 0) + (Number(module.assessmentHours) || 0);
   const duration = Number(module.durationWeeks) || 0;
   const start = module.startWeek != null ? Number(module.startWeek) : 1;
@@ -70,6 +77,13 @@ function validateWeeklyOverrides(module) {
   }
 
   const overrides = module.weeklyOverrides;
+  const restrictToModuleRange = options.restrictToModuleRange !== false;
+  const minWeek = options.minWeek != null
+    ? Number(options.minWeek)
+    : (restrictToModuleRange ? start : 1);
+  const maxWeek = options.maxWeek != null
+    ? Number(options.maxWeek)
+    : (restrictToModuleRange ? endWeek : Number.POSITIVE_INFINITY);
   let sum = 0;
 
   if (overrides && typeof overrides === "object") {
@@ -79,7 +93,7 @@ function validateWeeklyOverrides(module) {
 
     for (const [weekStr, value] of entries) {
       const week = parseInt(String(weekStr), 10);
-      if (!Number.isNaN(week) && week >= start && week <= endWeek) {
+      if (!Number.isNaN(week) && week >= minWeek && week <= maxWeek) {
         sum += Number(value) || 0;
       }
     }
@@ -94,8 +108,8 @@ function validateWeeklyOverrides(module) {
       assessmentHours: module.assessmentHours,
       expected: totalRequired,
       computedSum: sum,
-      startWeek: start,
-      endWeek,
+      minWeek,
+      maxWeek,
       weeklyOverridesKeys: overrides ? Object.keys(overrides instanceof Map ? Object.fromEntries(overrides) : overrides) : [],
     });
   }
@@ -133,16 +147,18 @@ function getWeekLabels(startDate, totalWeeks) {
 
 /**
  * Get effective weekly hours for a module (stored overrides or computed).
- * Always returns a complete object for all weeks in the module's range (startWeek to startWeek+durationWeeks-1),
- * so the frontend can render an input for every cell including empty ones (value 0).
+ * Always returns a complete object for all weeks in the selected window.
+ * Default window is module range; when totalWeeks is provided, window is 1..totalWeeks.
  * @param {Object} module - Module doc with weeklyOverrides, contactHours, assessmentHours, durationWeeks, startWeek
+ * @param {number} totalWeeks - Optional program duration in weeks
  * @returns {Object} Week number (string key) -> hours; all weeks in range present (0 for empty)
  */
-function getEffectiveWeeklyHours(module) {
+function getEffectiveWeeklyHours(module, totalWeeks) {
   const duration = Number(module.durationWeeks) || 0;
   const start = module.startWeek != null ? Number(module.startWeek) : 1;
-
-  if (duration <= 0) return {};
+  const programWeeks = Number(totalWeeks) || 0;
+  const useProgramWindow = programWeeks > 0;
+  if (!useProgramWindow && duration <= 0) return {};
 
   const overrides = module.weeklyOverrides;
   const plain = overrides && (overrides instanceof Map || typeof overrides === "object")
@@ -154,16 +170,25 @@ function getEffectiveWeeklyHours(module) {
     (k) => !Number.isNaN(parseInt(k, 10)) && (Number(plain[k]) || 0) !== 0
   );
 
+  const rangeStart = useProgramWindow ? 1 : start;
+  const rangeEnd = useProgramWindow ? programWeeks : (start + duration - 1);
+
   const result = {};
-  for (let i = 0; i < duration; i++) {
-    const week = start + i;
+  for (let week = rangeStart; week <= rangeEnd; week++) {
     const key = String(week);
     const overrideVal = plain[key];
     result[key] = overrideVal != null ? (Number(overrideVal) || 0) : 0;
   }
 
-  if (!hasOverrides && total > 0) {
-    return distributeHoursEvenly(total, duration, start);
+  if (!hasOverrides && total > 0 && duration > 0) {
+    const dist = distributeHoursEvenly(total, duration, start);
+    if (!useProgramWindow) return dist;
+    Object.entries(dist).forEach(([k, v]) => {
+      const week = parseInt(String(k), 10);
+      if (!Number.isNaN(week) && week >= 1 && week <= programWeeks) {
+        result[String(k)] = Number(v) || 0;
+      }
+    });
   }
   return result;
 }

@@ -57,7 +57,7 @@ const moduleSchema = new Schema(
     // Vocational curriculum fields
     code: {
       type: String,
-      trim: true,
+      trim: true, 
     },
     type: {
       type: String,
