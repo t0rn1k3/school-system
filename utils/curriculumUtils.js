@@ -151,7 +151,7 @@ function getWeekLabels(startDate, totalWeeks) {
  * Default window is module range; when totalWeeks is provided, window is 1..totalWeeks.
  * @param {Object} module - Module doc with weeklyOverrides, contactHours, assessmentHours, durationWeeks, startWeek
  * @param {number} totalWeeks - Optional program duration in weeks
- * @returns {Object} Week number (string key) -> hours; all weeks in range present (0 for empty)
+ * @returns {Object} Week number (string key) -> hours; only non-zero weeks are included
  */
 function getEffectiveWeeklyHours(module, totalWeeks) {
   const duration = Number(module.durationWeeks) || 0;
@@ -177,16 +177,24 @@ function getEffectiveWeeklyHours(module, totalWeeks) {
   for (let week = rangeStart; week <= rangeEnd; week++) {
     const key = String(week);
     const overrideVal = plain[key];
-    result[key] = overrideVal != null ? (Number(overrideVal) || 0) : 0;
+    const val = overrideVal != null ? (Number(overrideVal) || 0) : 0;
+    if (val !== 0) result[key] = val;
   }
 
   if (!hasOverrides && total > 0 && duration > 0) {
     const dist = distributeHoursEvenly(total, duration, start);
-    if (!useProgramWindow) return dist;
+    if (!useProgramWindow) {
+      const filtered = {};
+      Object.entries(dist).forEach(([k, v]) => {
+        if ((Number(v) || 0) !== 0) filtered[k] = v;
+      });
+      return filtered;
+    }
     Object.entries(dist).forEach(([k, v]) => {
       const week = parseInt(String(k), 10);
-      if (!Number.isNaN(week) && week >= 1 && week <= programWeeks) {
-        result[String(k)] = Number(v) || 0;
+      const val = Number(v) || 0;
+      if (!Number.isNaN(week) && week >= 1 && week <= programWeeks && val !== 0) {
+        result[String(k)] = val;
       }
     });
   }
